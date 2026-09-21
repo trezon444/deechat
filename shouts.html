@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeeChat - Shouts</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body {
+    margin: 0;
+    background: #eaf4ff;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: #333;
+}
+
+.header {
+    background: #1769aa;
+    color: white;
+    padding: 10px;
+    font-size: 21px;
+    font-weight: bold;
+}
+
+.nav {
+    background: white;
+    border-bottom: 1px solid #b7cde2;
+    padding: 7px;
+}
+
+.nav a {
+    color: #075aaa;
+    text-decoration: none;
+    margin-right: 8px;
+}
+
+.box {
+    margin: 8px;
+    background: white;
+    border: 1px solid #b7cde2;
+}
+
+.title {
+    background: #ffe45c;
+    padding: 7px;
+    font-weight: bold;
+}
+
+.content {
+    padding: 8px;
+}
+
+textarea {
+    width: 100%;
+    height: 65px;
+    box-sizing: border-box;
+    padding: 7px;
+    border: 1px solid #aaa;
+}
+
+button {
+    margin-top: 6px;
+    background: #1769aa;
+    color: white;
+    border: 0;
+    padding: 7px 12px;
+    font-weight: bold;
+}
+
+.shout {
+    border-bottom: 1px solid #eee;
+    padding: 8px 0;
+}
+
+.username {
+    color: #075aaa;
+    font-weight: bold;
+}
+
+.date {
+    color: #888;
+    font-size: 11px;
+}
+
+.like {
+    color: #075aaa;
+}
+
+.error {
+    color: #b00000;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    DeeChat
+</div>
+
+<div class="nav">
+    <a href="homepage.html">Home</a>
+    <a href="shouts.html">Shouts</a>
+    <a href="#">Topics</a>
+    <a href="#">Chat</a>
+    <a href="#">Members</a>
+    <a href="#">Groups</a>
+</div>
+
+<div class="box">
+
+    <div class="title">
+        Create Shout
+    </div>
+
+    <div class="content">
+
+        <textarea
+            id="shoutText"
+            maxlength="500"
+            placeholder="What's on your mind?"
+        ></textarea>
+
+        <button id="postShout">
+            Post Shout
+        </button>
+
+        <div id="postMessage"></div>
+
+    </div>
+</div>
+
+<div class="box">
+
+    <div class="title">
+        Latest Shouts
+    </div>
+
+    <div class="content" id="shouts">
+        Loading shouts...
+    </div>
+
+</div>
+
+<script>
+
+const SUPABASE_URL =
+    "https://sqikfejouaxizvidivcg.supabase.co";
+
+const SUPABASE_KEY =
+    "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+let currentUser = null;
+
+
+/* ==============================
+   CHECK LOGIN
+   ============================== */
+
+async function checkLogin() {
+
+    const {
+        data,
+        error
+    } = await supabaseClient.auth.getSession();
+
+    if (error || !data.session) {
+
+        window.location.href =
+            "login.html";
+
+        return false;
+    }
+
+    currentUser =
+        data.session.user;
+
+    return true;
+}
+
+
+/* ==============================
+   LOAD SHOUTS
+   ============================== */
+
+async function loadShouts() {
+
+    const container =
+        document.getElementById("shouts");
+
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("shouts")
+        .select(`
+            id,
+            body,
+            likes_count,
+            created_at,
+            user_id,
+            profiles (
+                username,
+                display_name,
+                site_role,
+                is_verified
+            )
+        `)
+        .order("created_at", {
+            ascending: false
+        })
+        .limit(30);
+
+    if (error) {
+
+        console.error(error);
+
+        container.innerHTML =
+            '<div class="error">' +
+            'Unable to load shouts: ' +
+            escapeHTML(error.message) +
+            '</div>';
+
+        return;
+    }
+
+    if (!data || data.length === 0) {
+
+        container.textContent =
+            "No shouts yet. Be the first to post!";
+
+        return;
+    }
+
+    container.innerHTML = "";
+
+    data.forEach(function(shout) {
+
+        const profile =
+            shout.profiles || {};
+
+        let tag = "";
+
+        if (profile.site_role === "owner") {
+
+            tag = " [OWNER]";
+
+        } else if (
+            profile.site_role &&
+            profile.site_role !== "member" &&
+            profile.site_role !== "new_member"
+        ) {
+
+            tag =
+                " [" +
+                profile.site_role
+                    .replaceAll("_", " ")
+                    .toUpperCase() +
+                "]";
+        }
+
+        const shoutDiv =
+            document.createElement("div");
+
+        shoutDiv.className =
+            "shout";
+
+        shoutDiv.innerHTML = `
+
+            <div class="username">
+                ${escapeHTML(
+                    profile.display_name ||
+                    profile.username ||
+                    "Member"
+                )}
+
+                <span>
+                    ${escapeHTML(tag)}
+                </span>
+            </div>
+
+            <div>
+                ${escapeHTML(shout.body)}
+            </div>
+
+            <div class="date">
+                ${new Date(
+                    shout.created_at
+                ).toLocaleString()}
+            </div>
+
+            <div class="like">
+                ❤️ ${shout.likes_count || 0} likes
+            </div>
+
+        `;
+
+        container.appendChild(shoutDiv);
+
+    });
+}
+
+
+/* ==============================
+   POST SHOUT
+   ============================== */
+
+document
+    .getElementById("postShout")
+    .addEventListener("click", async function() {
+
+        const textarea =
+            document.getElementById("shoutText");
+
+        const postMessage =
+            document.getElementById("postMessage");
+
+        const body =
+            textarea.value.trim();
+
+        if (!body) {
+
+            postMessage.textContent =
+                "Write something first.";
+
+            return;
+        }
+
+        if (!currentUser) {
+
+            postMessage.textContent =
+                "You are not logged in.";
+
+            return;
+        }
+
+        this.disabled = true;
+
+        this.textContent =
+            "Posting...";
+
+        const {
+            error
+        } = await supabaseClient
+            .from("shouts")
+            .insert({
+
+                user_id:
+                    currentUser.id,
+
+                body:
+                    body
+
+            });
+
+        if (error) {
+
+            postMessage.textContent =
+                "Could not post shout: " +
+                error.message;
+
+            this.disabled = false;
+
+            this.textContent =
+                "Post Shout";
+
+            return;
+        }
+
+        textarea.value = "";
+
+        postMessage.textContent =
+            "Shout posted!";
+
+        this.disabled = false;
+
+        this.textContent =
+            "Post Shout";
+
+        loadShouts();
+
+    });
+
+
+/* ==============================
+   ESCAPE HTML
+   ============================== */
+
+function escapeHTML(text) {
+
+    const div =
+        document.createElement("div");
+
+    div.textContent =
+        text == null ? "" : text;
+
+    return div.innerHTML;
+}
+
+
+/* ==============================
+   START
+   ============================== */
+
+(async function() {
+
+    const loggedIn =
+        await checkLogin();
+
+    if (!loggedIn) return;
+
+    loadShouts();
+
+})();
+
+</script>
+
+</body>
+</html>
