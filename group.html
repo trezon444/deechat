@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeeChat - Group</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    margin:0;
+    background:#f3f3e8;
+    color:#222;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+}
+a{
+    color:#0645ad;
+    text-decoration:none;
+}
+a:hover{
+    text-decoration:underline;
+}
+.header{
+    background:#174a8b;
+    color:white;
+    padding:8px;
+    font-size:20px;
+    font-weight:bold;
+}
+.nav{
+    background:#fff3a6;
+    border-bottom:1px solid #d5c85b;
+    padding:6px;
+    line-height:1.8;
+}
+.nav a{
+    margin-right:8px;
+}
+.box{
+    background:#fff;
+    border:1px solid #ccc;
+    margin:8px;
+    padding:8px;
+}
+.title{
+    background:#ffe45c;
+    border:1px solid #d6c13b;
+    padding:6px;
+    font-weight:bold;
+    margin-bottom:7px;
+}
+.group-head{
+    text-align:center;
+}
+.logo{
+    width:70px;
+    height:70px;
+    border:1px solid #aaa;
+    background:#eee;
+    object-fit:cover;
+}
+.group-name{
+    font-size:20px;
+    font-weight:bold;
+    margin-top:5px;
+}
+.abbr{
+    color:#666;
+}
+.desc{
+    margin-top:6px;
+}
+.btn{
+    display:inline-block;
+    background:#174a8b;
+    color:white;
+    padding:6px 9px;
+    border:1px solid #0d315e;
+    margin:3px 2px;
+    cursor:pointer;
+}
+.btn:hover{
+    text-decoration:none;
+    background:#0d315e;
+}
+.small{
+    color:#666;
+    font-size:12px;
+}
+.member{
+    border-bottom:1px dotted #aaa;
+    padding:7px 0;
+    min-height:45px;
+}
+.avatar{
+    width:38px;
+    height:38px;
+    border-radius:3px;
+    object-fit:cover;
+    background:#ddd;
+    float:left;
+    margin-right:7px;
+}
+.clear{
+    clear:both;
+}
+.role{
+    color:#8a5200;
+    font-size:11px;
+    font-weight:bold;
+}
+.site-role{
+    color:#174a8b;
+    font-size:11px;
+    font-weight:bold;
+}
+.feature{
+    display:inline-block;
+    background:#e8f1ff;
+    border:1px solid #b9cde8;
+    padding:3px 5px;
+    margin:2px;
+    font-size:12px;
+}
+.notice{
+    background:#fff8c7;
+    border:1px solid #ddd083;
+    padding:6px;
+}
+.error{
+    color:#a00000;
+    font-weight:bold;
+}
+.success{
+    color:#087a21;
+    font-weight:bold;
+}
+.footer{
+    text-align:center;
+    color:#666;
+    padding:15px 5px;
+    font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">DeeChat</div>
+
+<div class="nav">
+    <a href="homepage.html">Home</a>
+    <a href="groups.html">Groups</a>
+    <a href="members.html">Members</a>
+    <a href="shouts.html">Shouts</a>
+    <a href="topics.html">Topics</a>
+</div>
+
+<div id="statusBox"></div>
+
+<div class="box">
+    <div class="group-head" id="groupHeader">
+        Loading group...
+    </div>
+</div>
+
+<div class="box">
+    <div class="title">Group Information</div>
+    <div id="groupInfo">Loading...</div>
+</div>
+
+<div class="box">
+    <div class="title">Group Features</div>
+    <div id="features">Loading...</div>
+</div>
+
+<div class="box">
+    <div class="title">Group Links</div>
+    <div id="groupLinks">Loading...</div>
+</div>
+
+<div class="box">
+    <div class="title">Leader & Leadership</div>
+    <div id="leadership">Loading...</div>
+</div>
+
+<div class="box">
+    <div class="title">Members</div>
+    <div id="members">Loading...</div>
+</div>
+
+<div class="footer">
+    © DeeChat 2026
+</div>
+
+<script>
+const SUPABASE_URL = "https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+    window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentProfile = null;
+let groupId = null;
+let groupData = null;
+let groupMembers = [];
+
+/* ---------- HELPERS ---------- */
+
+function esc(value){
+    return String(value ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+function formatDate(date){
+    if(!date) return "Unknown";
+
+    return new Date(date).toLocaleString([], {
+        year:"numeric",
+        month:"short",
+        day:"numeric",
+        hour:"2-digit",
+        minute:"2-digit"
+    });
+}
+
+function roleTag(profile){
+    if(!profile) return "";
+
+    const role = profile.site_role || "member";
+
+    const names = {
+        owner:"OWNER",
+        super_admin:"SUPER ADMIN",
+        admin:"ADMIN",
+        head_mod:"HEAD MOD",
+        moderator:"MOD",
+        vip:"VIP",
+        verified_member:"VERIFIED",
+        member:"MEMBER",
+        new_member:"NEW MEMBER"
+    };
+
+    return `<span class="site-role">[${esc(names[role] || role.toUpperCase())}]</span>`;
+}
+
+function groupTag(member){
+    if(!member) return "";
+
+    if(member.group_tag){
+        return `<span class="role">[${esc(member.group_tag)}]</span>`;
+    }
+
+    if(member.is_co_leader){
+        return `<span class="role">[CO-LEADER]</span>`;
+    }
+
+    if(member.group_rank){
+        return `<span class="role">[${esc(member.group_rank)}]</span>`;
+    }
+
+    return "";
+}
+
+function hasFeature(name){
+    if(!groupData) return false;
+
+    const features = groupData.enabled_features || {};
+
+    if(Array.isArray(features)){
+        return features.includes(name);
+    }
+
+    return features[name] === true;
+}
+
+function permissionGranted(name){
+    if(!groupData) return false;
+
+    const permissions = groupData.admin_granted_permissions || {};
+
+    if(Array.isArray(permissions)){
+        return permissions.includes(name);
+    }
+
+    return permissions[name] === true;
+}
+
+function canManageGroup(){
+    if(!currentProfile || !groupData) return false;
+
+    const role = currentProfile.site_role;
+
+    if(
+        role === "owner" ||
+        role === "super_admin" ||
+        role === "admin"
+    ){
+        return true;
+    }
+
+    const myMembership = groupMembers.find(
+        m => m.user_id === currentUser.id
+    );
+
+    if(!myMembership) return false;
+
+    if(myMembership.is_co_leader){
+        return true;
+    }
+
+    return myMembership.user_id === groupData.leader_id;
+}
+
+/* ---------- AUTH ---------- */
+
+async function checkAuth(){
+
+    const { data, error } =
+        await supabaseClient.auth.getSession();
+
+    if(error || !data.session){
+        window.location.href = "login.html";
+        return false;
+    }
+
+    currentUser = data.session.user;
+
+    const { data: profile, error: profileError } =
+        await supabaseClient
+            .from("profiles")
+            .select("*")
+            .eq("id", currentUser.id)
+            .single();
+
+    if(profileError){
+        console.error(profileError);
+    }
+
+    currentProfile = profile;
+
+    return true;
+}
+
+/* ---------- GROUP ID ---------- */
+
+function getGroupId(){
+
+    const params = new URLSearchParams(
+        window.location.search
+    );
+
+    return params.get("id");
+}
+
+/* ---------- LOAD GROUP ---------- */
+
+async function loadGroup(){
+
+    const { data, error } =
+        await supabaseClient
+            .from("groups")
+            .select("*")
+            .eq("id", groupId)
+            .single();
+
+    if(error || !data){
+
+        document.getElementById("groupHeader").innerHTML =
+            `<div class="error">Group not found.</div>`;
+
+        document.getElementById("groupInfo").innerHTML =
+            `This group may have been deleted or you may not have access to it.`;
+
+        return false;
+    }
+
+    groupData = data;
+
+    return true;
+}
+
+/* ---------- LOAD MEMBERS ---------- */
+
+async function loadMembers(){
+
+    const { data, error } =
+        await supabaseClient
+            .from("group_members")
+            .select(`
+                user_id,
+                group_rank,
+                group_tag,
+                is_co_leader,
+                joined_at,
+                profiles (
+                    id,
+                    username,
+                    display_name,
+                    avatar_url,
+                    site_role,
+                    is_verified,
+                    is_banned,
+                    is_suspended
+                )
+            `)
+            .eq("group_id", groupId)
+            .order("joined_at", { ascending:true });
+
+    if(error){
+        console.error(error);
+
+        document.getElementById("members").innerHTML =
+            `<div class="error">Unable to load members.</div>`;
+
+        return;
+    }
+
+    groupMembers = data || [];
+}
+
+/* ---------- HEADER ---------- */
+
+function renderHeader(){
+
+    const logo = groupData.logo_url
+        ? `<img class="logo"
+                src="${esc(groupData.logo_url)}"
+                alt="Group logo">`
+        : `<div class="logo"
+                style="margin:auto;line-height:70px;">
+                ${esc(
+                    (groupData.abbreviation ||
+                    groupData.name ||
+                    "G").substring(0,2).toUpperCase()
+                )}
+           </div>`;
+
+    document.getElementById("groupHeader").innerHTML = `
+        ${logo}
+
+        <div class="group-name">
+            ${esc(groupData.name)}
+        </div>
+
+        <div class="abbr">
+            ${groupData.abbreviation
+                ? "[" + esc(groupData.abbreviation) + "]"
+                : ""}
+        </div>
+
+        <div class="desc">
+            ${esc(groupData.description || "No description yet.")}
+        </div>
+    `;
+}
+
+/* ---------- GROUP INFO ---------- */
+
+function renderInfo(){
+
+    const leader =
+        groupMembers.find(
+            m => m.user_id === groupData.leader_id
+        );
+
+    const leaderName =
+        leader && leader.profiles
+            ? leader.profiles.display_name ||
+              leader.profiles.username
+            : "Group Leader";
+
+    document.getElementById("groupInfo").innerHTML = `
+
+        <b>Group:</b>
+        ${esc(groupData.name)}
+        <br>
+
+        <b>Members:</b>
+        ${groupMembers.length}
+        <br>
+
+        <b>Created:</b>
+        ${formatDate(groupData.created_at)}
+        <br>
+
+        <b>Leader:</b>
+        ${
+            leader
+            ? `<a href="profile.html?id=${leader.user_id}">
+                ${esc(leaderName)}
+               </a>`
+            : esc(leaderName)
+        }
+
+        <br><br>
+
+        <b>Description</b><br>
+        ${esc(groupData.description || "No description provided.")}
+
+        <br><br>
+
+        <b>Rules</b><br>
+        ${
+            groupData.rules
+            ? esc(groupData.rules).replace(/\n/g,"<br>")
+            : "No group rules have been added yet."
+        }
+    `;
+}
+
+/* ---------- FEATURES ---------- */
+
+function renderFeatures(){
+
+    const featureNames = {
+        member_management:"Member Management",
+        rank_management:"Rank Management",
+        leadership_management:"Leadership Management",
+        join_requests:"Join Requests",
+        group_chat:"Group Chat",
+        group_shouts:"Group Shouts",
+        group_topics:"Group Topics",
+        announcements:"Announcements",
+        voting:"Group Voting",
+        activities:"Group Activities",
+        awards:"Group Awards",
+        statistics:"Group Statistics",
+        rules:"Group Rules",
+        notifications:"Group Notifications",
+        member_restrictions:"Member Restrictions",
+        reports:"Group Reports"
+    };
+
+    const features =
+        groupData.enabled_features || {};
+
+    let html = "";
+
+    if(Array.isArray(features)){
+
+        features.forEach(feature => {
+
+            html += `
+                <span class="feature">
+                    ${esc(featureNames[feature] || feature)}
+                </span>
+            `;
+        });
+
+    }else{
+
+        Object.keys(featureNames).forEach(feature => {
+
+            if(features[feature] === true){
+
+                html += `
+                    <span class="feature">
+                        ${esc(featureNames[feature])}
+                    </span>
+                `;
+            }
+        });
+    }
+
+    if(!html){
+        html =
+            `<span class="small">
+                No group features have been enabled yet.
+            </span>`;
+    }
+
+    document.getElementById("features").innerHTML = html;
+}
+
+/* ---------- LINKS ---------- */
+
+function renderLinks(){
+
+    let html = "";
+
+    if(hasFeature("group_chat")){
+        html += `
+            <a class="btn"
+               href="group_chat.html?id=${groupId}">
+               Group Chat
+            </a>
+        `;
+    }
+
+    if(hasFeature("group_shouts")){
+        html += `
+            <a class="btn"
+               href="group_shouts.html?id=${groupId}">
+               Group Shouts
+            </a>
+        `;
+    }
+
+    if(hasFeature("group_topics")){
+        html += `
+            <a class="btn"
+               href="group_topics.html?id=${groupId}">
+               Group Topics
+            </a>
+        `;
+    }
+
+    if(hasFeature("announcements")){
+        html += `
+            <a class="btn"
+               href="group_announcements.html?id=${groupId}">
+               Announcements
+            </a>
+        `;
+    }
+
+    if(hasFeature("voting")){
+        html += `
+            <a class="btn"
+               href="group_voting.html?id=${groupId}">
+               Voting
+            </a>
+        `;
+    }
+
+    if(hasFeature("activities")){
+        html += `
+            <a class="btn"
+               href="group_activities.html?id=${groupId}">
+               Activities
+            </a>
+        `;
+    }
+
+    if(hasFeature("statistics")){
+        html += `
+            <a class="btn"
+               href="group_stats.html?id=${groupId}">
+               Statistics
+            </a>
+        `;
+    }
+
+    if(canManageGroup()){
+
+        html += `
+            <br>
+            <a class="btn"
+               href="group_panel.html?id=${groupId}">
+               Manage Group
+            </a>
+        `;
+    }
+
+    if(!html){
+        html =
+            `<span class="small">
+                No extra group sections are currently enabled.
+            </span>`;
+    }
+
+    document.getElementById("groupLinks").innerHTML = html;
+}
+
+/* ---------- LEADERSHIP ---------- */
+
+function renderLeadership(){
+
+    const leaders =
+        groupMembers.filter(
+            m =>
+                m.user_id === groupData.leader_id ||
+                m.is_co_leader === true
+        );
+
+    if(!leaders.length){
+
+        document.getElementById("leadership").innerHTML =
+            "No leadership members found.";
+
+        return;
+    }
+
+    let html = "";
+
+    leaders.forEach(member => {
+
+        const profile = member.profiles;
+
+        if(!profile) return;
+
+        let leadershipTag = "";
+
+        if(member.user_id === groupData.leader_id){
+            leadershipTag = "LEADER";
+        }else if(member.is_co_leader){
+            leadershipTag = "CO-LEADER";
+        }
+
+        html += `
+            <div class="member">
+
+                ${
+                    profile.avatar_url
+                    ? `<img class="avatar"
+                             src="${esc(profile.avatar_url)}"
+                             alt="">`
+                    : `<div class="avatar"></div>`
+                }
+
+                <a href="profile.html?id=${profile.id}">
+                    <b>
+                        ${esc(
+                            profile.display_name ||
+                            profile.username
+                        )}
+                    </b>
+                </a>
+
+                ${roleTag(profile)}
+
+                <br>
+
+                <span class="role">
+                    [${leadershipTag}]
+                </span>
+
+                ${groupTag(member)}
+
+                <div class="small">
+                    @${esc(profile.username)}
+                </div>
+
+                <div class="clear"></div>
+            </div>
+        `;
+    });
+
+    document.getElementById("leadership").innerHTML = html;
+}
+
+/* ---------- MEMBERS ---------- */
+
+function renderMembers(){
+
+    if(!groupMembers.length){
+
+        document.getElementById("members").innerHTML =
+            `<div class="small">
+                This group has no members yet.
+            </div>`;
+
+        return;
+    }
+
+    let html = "";
+
+    groupMembers.forEach(member => {
+
+        const profile = member.profiles;
+
+        if(!profile) return;
+
+        html += `
+            <div class="member">
+
+                ${
+                    profile.avatar_url
+                    ? `<img class="avatar"
+                             src="${esc(profile.avatar_url)}"
+                             alt="">`
+                    : `<div class="avatar"></div>`
+                }
+
+                <a href="profile.html?id=${profile.id}">
+                    <b>
+                        ${esc(
+                            profile.display_name ||
+                            profile.username
+                        )}
+                    </b>
+                </a>
+
+                ${roleTag(profile)}
+
+                <br>
+
+                ${groupTag(member)}
+
+                <div class="small">
+                    @${esc(profile.username)}
+                    · Joined ${formatDate(member.joined_at)}
+                </div>
+
+                <div class="clear"></div>
+            </div>
+        `;
+    });
+
+    document.getElementById("members").innerHTML = html;
+}
+
+/* ---------- MEMBERSHIP ---------- */
+
+function renderMembership(){
+
+    const existing =
+        groupMembers.find(
+            m => m.user_id === currentUser.id
+        );
+
+    const statusBox =
+        document.getElementById("statusBox");
+
+    if(existing){
+
+        statusBox.innerHTML = `
+            <div class="box">
+                <div class="notice">
+                    You are a member of this group.
+                    ${groupTag(existing)}
+                    ${
+                        canManageGroup()
+                        ? `<br><br>
+                           <a class="btn"
+                              href="group_panel.html?id=${groupId}">
+                              Group Management
+                           </a>`
+                        : ""
+                    }
+                </div>
+            </div>
+        `;
+
+        return;
+    }
+
+    statusBox.innerHTML = `
+        <div class="box">
+            <div class="notice">
+                You are not a member of this group.
+                <br><br>
+                <button class="btn"
+                        onclick="requestJoin()">
+                    Request to Join
+                </button>
+
+                <div id="joinMessage"></div>
+            </div>
+        </div>
+    `;
+}
+
+/* ---------- JOIN REQUEST ---------- */
+
+async function requestJoin(){
+
+    const message =
+        document.getElementById("joinMessage");
+
+    message.innerHTML =
+        `<span class="small">Sending request...</span>`;
+
+    const { data: existing, error: checkError } =
+        await supabaseClient
+            .from("group_join_requests")
+            .select("id,status")
+            .eq("group_id", groupId)
+            .eq("user_id", currentUser.id)
+            .maybeSingle();
+
+    if(checkError){
+
+        message.innerHTML =
+            `<span class="error">
+                Could not check your request.
+             </span>`;
+
+        return;
+    }
+
+    if(existing){
+
+        if(existing.status === "pending"){
+
+            message.innerHTML =
+                `<span class="success">
+                    Your join request is already pending.
+                 </span>`;
+
+            return;
+        }
+
+        if(existing.status === "approved"){
+
+            message.innerHTML =
+                `<span class="success">
+                    You are already approved for this group.
+                 </span>`;
+
+            return;
+        }
+    }
+
+    const { error } =
+        await supabaseClient
+            .from("group_join_requests")
+            .insert({
+                group_id: groupId,
+                user_id: currentUser.id,
+                status: "pending"
+            });
+
+    if(error){
+
+        console.error(error);
+
+        message.innerHTML =
+            `<span class="error">
+                Unable to send join request.
+             </span>`;
+
+        return;
+    }
+
+    message.innerHTML =
+        `<span class
