@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeeChat - Admin Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{margin:0;background:#eef7ff;font-family:Arial,sans-serif;font-size:14px;color:#222}
+a{color:#0645ad;text-decoration:none}
+.header{background:#0066aa;color:#fff;padding:8px;font-size:20px;font-weight:bold}
+.nav{background:#ffe680;padding:7px}
+.nav a{margin-right:9px}
+.box{margin:8px;border:1px solid #aaa;background:#fff}
+.title{background:#ffd84d;padding:6px;font-weight:bold}
+.content{padding:8px}
+.stat{display:inline-block;width:46%;box-sizing:border-box;background:#f5f5f5;border:1px solid #ccc;margin:1%;padding:9px;text-align:center}
+.number{font-size:20px;font-weight:bold;color:#0066aa}
+.menu a{display:block;padding:9px;border-bottom:1px solid #ddd}
+.menu a:last-child{border-bottom:0}
+.notice{background:#e8f5e9;border:1px solid #9ccc9c;padding:7px;margin-bottom:8px}
+.error{background:#ffe5e5;border:1px solid #cc7777;padding:7px;margin-bottom:8px}
+.small{font-size:12px;color:#777}
+.footer{text-align:center;padding:15px;color:#777;font-size:12px}
+</style>
+</head>
+
+<body>
+
+<div class="header">DeeChat Admin</div>
+
+<div class="nav">
+<a href="homepage.html">Home</a>
+<a href="profile.html">Profile</a>
+<a href="notifications.html">Notifications</a>
+<a href="settings.html">Settings</a>
+</div>
+
+<div class="box">
+<div class="title">Admin Dashboard</div>
+
+<div class="content">
+
+<div id="status"></div>
+<div id="dashboard" style="display:none">
+
+<div class="notice">
+<b id="welcome">Admin Control Panel</b>
+<br>
+<span class="small">Manage DeeChat from one place.</span>
+</div>
+
+<div class="stat">
+<div class="number" id="users">0</div>
+Total Users
+</div>
+
+<div class="stat">
+<div class="number" id="online">0</div>
+Online Users
+</div>
+
+<div class="stat">
+<div class="number" id="newUsers">0</div>
+New Today
+</div>
+
+<div class="stat">
+<div class="number" id="rooms">0</div>
+Chat Rooms
+</div>
+
+<div class="stat">
+<div class="number" id="activeRooms">0</div>
+Active Rooms
+</div>
+
+<div class="stat">
+<div class="number" id="messages">0</div>
+Messages
+</div>
+
+<div class="stat">
+<div class="number" id="reports">0</div>
+Pending Reports
+</div>
+
+<div class="stat">
+<div class="number" id="banned">0</div>
+Banned Users
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="box" id="menuBox" style="display:none">
+<div class="title">Administration</div>
+
+<div class="content menu">
+
+<a href="admin_users.html">
+👥 User Management
+<br>
+<span class="small">Search, edit, suspend, ban and manage members</span>
+</a>
+
+<a href="admin_reports.html">
+🚨 Reports & Moderation
+<br>
+<span class="small">Review reports and moderation actions</span>
+</a>
+
+<a href="admin_rooms.html">
+💬 Chat Rooms
+<br>
+<span class="small">Create, edit, lock and manage rooms</span>
+</a>
+
+<a href="admin_groups.html">
+👥 Groups
+<br>
+<span class="small">Manage groups, leaders and permissions</span>
+</a>
+
+<a href="admin_moderators.html">
+🛡 Staff & Moderators
+<br>
+<span class="small">Manage admins, moderators and permissions</span>
+</a>
+
+<a href="groups.html">
+🏠 Group Directory
+<br>
+<span class="small">View all DeeChat groups</span>
+</a>
+
+<a href="members.html">
+👤 Member Directory
+<br>
+<span class="small">View DeeChat members</span>
+</a>
+
+</div>
+</div>
+
+<div class="footer">
+©DaVeCrEaToR DeeChat 2026
+</div>
+
+<script>
+const SUPABASE_URL="https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY="sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient=window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+const staffRoles=[
+    "owner",
+    "super_admin",
+    "admin",
+    "head_mod",
+    "moderator"
+];
+
+async function init(){
+
+    const {data:{session}}=
+        await supabaseClient.auth.getSession();
+
+    if(!session){
+        location.href="login.html";
+        return;
+    }
+
+    const {data:profile,error}=await supabaseClient
+        .from("profiles")
+        .select("username,display_name,site_role")
+        .eq("id",session.user.id)
+        .single();
+
+    if(error || !profile || !staffRoles.includes(profile.site_role)){
+        document.getElementById("status").innerHTML=
+            '<div class="error">Access denied. Staff only.</div>';
+        return;
+    }
+
+    document.getElementById("dashboard").style.display="block";
+    document.getElementById("menuBox").style.display="block";
+
+    document.getElementById("welcome").textContent=
+        "Welcome, "+
+        (profile.display_name || profile.username)+
+        " ["+
+        profile.site_role.replace("_"," ").toUpperCase()+
+        "]";
+
+    await loadStats();
+}
+
+async function countTable(table){
+
+    const {count,error}=await supabaseClient
+        .from(table)
+        .select("*",{count:"exact",head:true});
+
+    if(error) return 0;
+
+    return count || 0;
+}
+
+async function loadStats(){
+
+    const users=await countTable("profiles");
+    const rooms=await countTable("rooms");
+    const messages=await countTable("messages");
+
+    const {count:reports}=await supabaseClient
+        .from("reports")
+        .select("*",{count:"exact",head:true})
+        .eq("status","pending");
+
+    const {count:banned}=await supabaseClient
+        .from("profiles")
+        .select("*",{count:"exact",head:true})
+        .eq("is_banned",true);
+
+    const fiveMinutesAgo=
+        new Date(Date.now()-5*60*1000).toISOString();
+
+    const {count:online}=await supabaseClient
+        .from("profiles")
+        .select("*",{count:"exact",head:true})
+        .eq("is_banned",false)
+        .gte("last_active_at",fiveMinutesAgo);
+
+    const startOfDay=new Date();
+    startOfDay.setHours(0,0,0,0);
+
+    const {count:newUsers}=await supabaseClient
+        .from("profiles")
+        .select("*",{count:"exact",head:true})
+        .gte("created_at",startOfDay.toISOString());
+
+    const {data:roomData}=await supabaseClient
+        .from("rooms")
+        .select("id")
+        .eq("is_locked",false);
+
+    document.getElementById("users").textContent=users;
+    document.getElementById("online").textContent=online || 0;
+    document.getElementById("newUsers").textContent=newUsers || 0;
+    document.getElementById("rooms").textContent=rooms;
+    document.getElementById("activeRooms").textContent=
+        roomData ? roomData.length : 0;
+    document.getElementById("messages").textContent=messages;
+    document.getElementById("reports").textContent=reports || 0;
+    document.getElementById("banned").textContent=banned || 0;
+}
+
+init();
+</script>
+
+</body>
+</html>
