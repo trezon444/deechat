@@ -1,242 +1,290 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#1565c0">
-  <title>Login - DeeChat</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+<title>Login - DeeChat</title>
 
-    body {
-      margin: 0;
-      background: #e8f2ff;
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: 14px;
-      color: #222;
-    }
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    .site {
-      max-width: 650px;
-      min-height: 100vh;
-      margin: auto;
-      background: #fff;
-      border-left: 1px solid #b7cce2;
-      border-right: 1px solid #b7cce2;
-    }
+<style>
+* {
+    box-sizing: border-box;
+}
 
-    .header {
-      background: #1565c0;
-      color: white;
-      text-align: center;
-      padding: 14px 8px;
-      border-bottom: 3px solid #0d47a1;
-    }
+body {
+    margin: 0;
+    background: #eaf4ff;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    color: #333;
+}
 
-    .logo {
-      font-size: 27px;
-      font-weight: bold;
-    }
+.header {
+    background: #1769aa;
+    color: white;
+    padding: 12px;
+    font-size: 20px;
+    font-weight: bold;
+}
 
-    .tagline {
-      font-size: 12px;
-      margin-top: 4px;
-    }
+.box {
+    margin: 10px;
+    border: 1px solid #b7cde2;
+    background: white;
+}
 
-    .nav {
-      background: #f4d03f;
-      border-bottom: 1px solid #c7a900;
-      text-align: center;
-      padding: 8px;
-    }
+.title {
+    background: #ffe45c;
+    padding: 8px;
+    font-weight: bold;
+}
 
-    .nav a {
-      color: #174b8a;
-      font-weight: bold;
-      text-decoration: none;
-      margin: 0 5px;
-    }
+.content {
+    padding: 10px;
+}
 
-    .box {
-      margin: 10px;
-      border: 1px solid #c4d5e5;
-      background: #f8fbff;
-    }
+label {
+    display: block;
+    margin-top: 9px;
+    font-weight: bold;
+}
 
-    .title {
-      padding: 8px;
-      background: #f1c40f;
-      border-bottom: 1px solid #d0a900;
-      font-weight: bold;
-    }
+input {
+    width: 100%;
+    padding: 9px;
+    margin-top: 4px;
+    border: 1px solid #aaa;
+    font-size: 14px;
+}
 
-    .content {
-      padding: 12px;
-    }
+button {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    border: 0;
+    background: #1769aa;
+    color: white;
+    font-weight: bold;
+    font-size: 15px;
+}
 
-    label {
-      display: block;
-      margin-top: 10px;
-      margin-bottom: 4px;
-      font-weight: bold;
-    }
+button:disabled {
+    background: #888;
+}
 
-    input {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #aebfd0;
-      border-radius: 3px;
-      background: white;
-      font-size: 14px;
-    }
+.message {
+    display: none;
+    margin-top: 10px;
+    padding: 8px;
+}
 
-    .button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 15px;
-      border: 0;
-      border-radius: 3px;
-      background: #1565c0;
-      color: white;
-      font-weight: bold;
-      font-size: 15px;
-    }
+.success {
+    background: #d9f7d9;
+    border: 1px solid #8ac98a;
+}
 
-    .links {
-      text-align: center;
-      margin-top: 15px;
-      line-height: 2;
-    }
+.error {
+    background: #ffdede;
+    border: 1px solid #e09090;
+}
 
-    .notice {
-      margin-top: 12px;
-      padding: 8px;
-      background: #fff8d8;
-      border: 1px solid #e6d477;
-      font-size: 12px;
-    }
+.links {
+    padding: 10px;
+    text-align: center;
+}
 
-    .footer {
-      margin-top: 18px;
-      padding: 13px 8px;
-      text-align: center;
-      background: #164a7b;
-      color: white;
-      font-size: 12px;
-    }
-
-    .footer a {
-      color: white;
-    }
-  </style>
+a {
+    color: #075aaa;
+    text-decoration: none;
+}
+</style>
 </head>
 
 <body>
 
-<div class="site">
+<div class="header">
+    DeeChat
+</div>
 
-  <!-- HEADER -->
-  <div class="header">
-    <div class="logo">💬 DeeChat</div>
-    <div class="tagline">Member Login</div>
-  </div>
-
-  <!-- NAVIGATION -->
-  <div class="nav">
-    <a href="index.html">Home</a> |
-    <a href="login.html">Login</a> |
-    <a href="register.html">Register</a>
-  </div>
-
-  <!-- LOGIN BOX -->
-  <div class="box">
+<div class="box">
 
     <div class="title">
-      🔐 Login to DeeChat
+        Member Login
     </div>
 
     <div class="content">
 
-      <form id="loginForm">
+        <form id="loginForm">
 
-        <label for="email">
-          Email Address
-        </label>
+            <label for="email">Email</label>
 
-        <input
-          type="email"
-          id="email"
-          name="email"
-          placeholder="Enter your email"
-          required
-          autocomplete="email"
-        >
+            <input
+                type="email"
+                id="email"
+                required
+                placeholder="Your email"
+            >
 
-        <label for="password">
-          Password
-        </label>
+            <label for="password">Password</label>
 
-        <input
-          type="password"
-          id="password"
-          name="password"
-          placeholder="Enter your password"
-          required
-          autocomplete="current-password"
-        >
+            <input
+                type="password"
+                id="password"
+                required
+                placeholder="Your password"
+            >
 
-        <button class="button" type="submit">
-          🔐 Login
-        </button>
+            <button
+                type="submit"
+                id="loginButton"
+            >
+                Login
+            </button>
 
-      </form>
+        </form>
 
-      <div class="links">
-        <a href="#">Forgot password?</a>
-        <br>
-        Don't have an account?
-        <a href="register.html">Create one →</a>
-      </div>
-
-      <div class="notice">
-        🔒 Your account and private information should
-        only be accessible after successful login.
-      </div>
+        <div id="message" class="message"></div>
 
     </div>
-
-  </div>
-
-  <!-- FOOTER -->
-  <div class="footer">
-
-    <strong>DeeChat</strong>
-
-    <br><br>
-
-    <a href="#">Rules</a> |
-    <a href="#">Privacy</a> |
-    <a href="#">Help</a>
-
-    <br><br>
-
-    © 2026 DeeChat
-
-  </div>
-
 </div>
 
-<script>
-  document.getElementById("loginForm").addEventListener("submit", function(e) {
-    e.preventDefault();
+<div class="links">
+    <a href="#">Forgot password?</a>
+</div>
 
-    alert(
-      "Login page is ready. The real authentication system will be connected next."
+<div class="links">
+    Don't have an account?
+    <a href="register.html">Register</a>
+</div>
+
+<div class="links">
+    <a href="index.html">← Back to DeeChat</a>
+</div>
+
+
+<script>
+
+/* ==============================
+   DEECHAT SUPABASE
+   ============================== */
+
+const SUPABASE_URL =
+    "https://sqikfejouaxizvidivcg.supabase.co";
+
+const SUPABASE_KEY =
+    "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
     );
-  });
+
+
+/* ==============================
+   ELEMENTS
+   ============================== */
+
+const form =
+    document.getElementById("loginForm");
+
+const button =
+    document.getElementById("loginButton");
+
+const message =
+    document.getElementById("message");
+
+
+/* ==============================
+   MESSAGE
+   ============================== */
+
+function showMessage(text, type) {
+
+    message.textContent = text;
+
+    message.className =
+        "message " + type;
+
+    message.style.display = "block";
+}
+
+
+/* ==============================
+   LOGIN
+   ============================== */
+
+form.addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+    const email =
+        document.getElementById("email")
+        .value
+        .trim();
+
+    const password =
+        document.getElementById("password")
+        .value;
+
+
+    button.disabled = true;
+
+    button.textContent =
+        "Logging in...";
+
+
+    const { data, error } =
+        await supabaseClient.auth.signInWithPassword({
+
+            email: email,
+
+            password: password
+
+        });
+
+
+    /* LOGIN ERROR */
+
+    if (error) {
+
+        showMessage(
+            error.message,
+            "error"
+        );
+
+        button.disabled = false;
+
+        button.textContent =
+            "Login";
+
+        return;
+    }
+
+
+    /* LOGIN SUCCESS */
+
+    if (data.session) {
+
+        showMessage(
+            "Login successful! Opening DeeChat...",
+            "success"
+        );
+
+
+        setTimeout(function() {
+
+            window.location.href =
+                "homepage.html";
+
+        }, 700);
+
+    }
+
+});
+
 </script>
 
 </body>
