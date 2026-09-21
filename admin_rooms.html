@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeeChat - Room Management</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{margin:0;background:#eef7ff;font-family:Arial,sans-serif;font-size:14px;color:#222}
+a{color:#0645ad;text-decoration:none}
+.header{background:#0066aa;color:#fff;padding:8px;font-size:20px;font-weight:bold}
+.nav{background:#ffe680;padding:7px}
+.nav a{margin-right:9px}
+.box{margin:8px;border:1px solid #aaa;background:#fff}
+.title{background:#ffd84d;padding:6px;font-weight:bold}
+.content{padding:8px}
+input,textarea,select{width:100%;box-sizing:border-box;padding:7px;margin:4px 0 8px;border:1px solid #aaa}
+textarea{min-height:65px}
+button{padding:6px 9px;border:1px solid #888;cursor:pointer}
+.primary{background:#0066aa;color:#fff}
+.good{background:#5cb85c;color:#fff}
+.danger{background:#d9534f;color:#fff}
+.room{border-bottom:1px solid #ddd;padding:10px 3px}
+.room:last-child{border-bottom:0}
+.tag{font-size:11px;background:#eee;border:1px solid #ccc;padding:2px 4px}
+.locked{color:#b30000}
+.open{color:green}
+.notice{background:#e8f5e9;border:1px solid #9ccc9c;padding:7px;margin-bottom:8px}
+.error{background:#ffe5e5;border:1px solid #cc7777;padding:7px;margin-bottom:8px}
+.small{font-size:12px;color:#777}
+.footer{text-align:center;padding:15px;color:#777;font-size:12px}
+</style>
+</head>
+
+<body>
+
+<div class="header">DeeChat Admin</div>
+
+<div class="nav">
+<a href="admin.html">Dashboard</a>
+<a href="admin_users.html">Users</a>
+<a href="admin_reports.html">Reports</a>
+<a href="admin_rooms.html">Rooms</a>
+<a href="admin_groups.html">Groups</a>
+<a href="admin_moderators.html">Staff</a>
+</div>
+
+<div class="box">
+<div class="title">Chat Room Management</div>
+
+<div class="content">
+
+<div id="status"></div>
+
+<div class="notice">
+<b>Create New Room</b>
+</div>
+
+<input id="newName" placeholder="Room name">
+<textarea id="newDescription" placeholder="Room description"></textarea>
+
+<select id="newVisibility">
+<option value="public">Public</option>
+<option value="private">Private</option>
+</select>
+
+<button class="primary" onclick="createRoom()">
+Create Room
+</button>
+
+<hr>
+
+<input id="search" placeholder="Search rooms..." oninput="loadRooms()">
+
+<div id="rooms">Loading rooms...</div>
+
+</div>
+</div>
+
+<div class="footer">
+©DaVeCrEaToR DeeChat 2026
+</div>
+
+<script>
+const SUPABASE_URL="https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY="sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient=window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+const staffRoles=[
+    "owner",
+    "super_admin",
+    "admin",
+    "head_mod",
+    "moderator"
+];
+
+let currentUser=null;
+let currentProfile=null;
+
+function escapeHTML(value){
+    return String(value ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
+
+function showStatus(message,error=false){
+    document.getElementById("status").innerHTML=
+        `<div class="${error?"error":"notice"}">
+        ${escapeHTML(message)}
+        </div>`;
+}
+
+async function init(){
+
+    const {data:{session}}=
+        await supabaseClient.auth.getSession();
+
+    if(!session){
+        location.href="login.html";
+        return;
+    }
+
+    currentUser=session.user;
+
+    const {data:profile,error}=await supabaseClient
+        .from("profiles")
+        .select("id,username,site_role")
+        .eq("id",currentUser.id)
+        .single();
+
+    if(error || !profile ||
+       !staffRoles.includes(profile.site_role)){
+
+        document.getElementById("status").innerHTML=
+            '<div class="error">Access denied. Staff only.</div>';
+
+        document.getElementById("rooms").innerHTML="";
+        return;
+    }
+
+    currentProfile=profile;
+
+    loadRooms();
+}
+
+async function loadRooms(){
+
+    const box=document.getElementById("rooms");
+    const search=
+        document.getElementById("search").value.trim();
+
+    let query=supabaseClient
+        .from("rooms")
+        .select(`
+            id,
+            name,
+            description,
+            visibility,
+            is_locked,
+            pinned_announcement,
+            created_by,
+            created_at
+        `)
+        .order("created_at",{ascending:false})
+        .limit(100);
+
+    if(search){
+        query=query.ilike(
+            "name",
+            "%"+search+"%"
+        );
+    }
+
+    const {data,error}=await query;
+
+    if(error){
+        box.innerHTML=
+            '<div class="error">Could not load rooms.</div>';
+        return;
+    }
+
+    if(!data || data.length===0){
+        box.innerHTML="<div>No rooms found.</div>";
+        return;
+    }
+
+    box.innerHTML=data.map(room=>{
+
+        return `
+        <div class="room">
+
+            <a href="chat.html?room=${room.id}">
+                <b>${escapeHTML(room.name)}</b>
+            </a>
+
+            <span class="tag">
+                ${escapeHTML(room.visibility)}
+            </span>
+
+            <br>
+
+            <span class="${room.is_locked?"locked":"open"}">
+                ${room.is_locked?"🔒 Locked":"🟢 Open"}
+            </span>
+
+            <br><br>
+
+            ${escapeHTML(room.description || "No description")}
+
+            ${
+                room.pinned_announcement
+                ? `<br><br>
+                   <span class="small">
+                   📌 ${escapeHTML(room.pinned_announcement)}
+                   </span>`
+                : ""
+            }
+
+            <br><br>
+
+            <span class="small">
+                Created: ${formatDate(room.created_at)}
+            </span>
+
+            <br><br>
+
+            <button onclick="editRoom('${room.id}')">
+                Edit
+            </button>
+
+            <button onclick="toggleLock(
+                '${room.id}',
+                ${!room.is_locked}
+            )">
+                ${room.is_locked?"Unlock":"Lock"}
+            </button>
+
+            <button onclick="announcement('${room.id}')">
+                Pin Announcement
+            </button>
+
+            <button class="danger"
+                onclick="deleteRoom('${room.id}')">
+                Delete
+            </button>
+
+        </div>
+        `;
+    }).join("");
+}
+
+async function createRoom(){
+
+    const name=
+        document.getElementById("newName")
+        .value.trim();
+
+    const description=
+        document.getElementById("newDescription")
+        .value.trim();
+
+    const visibility=
+        document.getElementById("newVisibility")
+        .value;
+
+    if(!name){
+        showStatus("Enter a room name.",true);
+        return;
+    }
+
+    const {error}=await supabaseClient
+        .from("rooms")
+        .insert({
+            name:name,
+            description:description,
+            visibility:visibility,
+            created_by:currentUser.id
+        });
+
+    if(error){
+        showStatus(
+            "Could not create room: "+error.message,
+            true
+        );
+        return;
+    }
+
+    document.getElementById("newName").value="";
+    document.getElementById("newDescription").value="";
+
+    showStatus("Room created.");
+    loadRooms();
+}
+
+async function editRoom(id){
+
+    const {data:room,error}=await supabaseClient
+        .from("rooms")
+        .select("name,description,visibility")
+        .eq("id",id)
+        .single();
+
+    if(error || !room){
+        showStatus("Room not found.",true);
+        return;
+    }
+
+    const name=prompt(
+        "Room name:",
+        room.name
+    );
+
+    if(name===null) return;
+
+    const description=prompt(
+        "Room description:",
+        room.description || ""
+    );
+
+    if(description===null) return;
+
+    const visibility=prompt(
+        "Visibility: public or private",
+        room.visibility
+    );
+
+    if(
+        visibility===null ||
+        !["public","private"].includes(visibility)
+    ){
+        return;
+    }
+
+    const {error:updateError}=await supabaseClient
+        .from("rooms")
+        .update({
+            name:name.trim(),
+            description:description.trim(),
+            visibility:visibility
+        })
+        .eq("id",id);
+
+    if(updateError){
+        showStatus(
+            "Could not update room: "+
+            updateError.message,
+            true
+        );
+        return;
+    }
+
+    showStatus("Room updated.");
+    loadRooms();
+}
+
+async function toggleLock(id,value){
+
+    const {error}=await supabaseClient
+        .from("rooms")
+        .update({
+            is_locked:value
+        })
+        .eq("id",id);
+
+    if(error){
+        showStatus(
+            "Could not change room lock: "+
+            error.message,
+            true
+        );
+        return;
+    }
+
+    loadRooms();
+}
+
+async function announcement(id){
+
+    const text=prompt(
+        "Enter pinned room announcement:"
+    );
+
+    if(text===null) return;
+
+    const {error}=await supabaseClient
+        .from("rooms")
+        .update({
+            pinned_announcement:
+                text.trim() || null
+        })
+        .eq("id",id);
+
+    if(error){
+        showStatus(
+            "Could not update announcement: "+
+            error.message,
+            true
+        );
+        return;
+    }
+
+    loadRooms();
+}
+
+async function deleteRoom(id){
+
+    const confirmed=confirm(
+        "Delete this room?\n\n"+
+        "Room messages and memberships may also "+
+        "be affected by database foreign-key rules."
+    );
+
+    if(!confirmed) return;
+
+    const {error}=await supabaseClient
+        .from("rooms")
+        .delete()
+        .eq("id",id);
+
+    if(error){
+        showStatus(
+            "Could not delete room: "+
+            error.message,
+            true
+        );
+        return;
+    }
+
+    showStatus("Room deleted.");
+    loadRooms();
+}
+
+function formatDate(date){
+    if(!date) return "Unknown";
+    return new Date(date).toLocaleString();
+}
+
+init();
+</script>
+
+</body>
+</html>
