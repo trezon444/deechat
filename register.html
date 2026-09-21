@@ -1,279 +1,431 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#1565c0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Register - DeeChat</title>
+<title>Register - DeeChat</title>
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    body {
-      margin: 0;
-      background: #e8f2ff;
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: 14px;
-      color: #222;
-    }
+<style>
+* {
+    box-sizing: border-box;
+}
 
-    .site {
-      max-width: 650px;
-      min-height: 100vh;
-      margin: auto;
-      background: #fff;
-      border-left: 1px solid #b7cce2;
-      border-right: 1px solid #b7cce2;
-    }
+body {
+    margin: 0;
+    background: #eaf4ff;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    color: #333;
+}
 
-    .header {
-      background: #1565c0;
-      color: white;
-      text-align: center;
-      padding: 14px 8px;
-      border-bottom: 3px solid #0d47a1;
-    }
+.header {
+    background: #1769aa;
+    color: white;
+    padding: 12px;
+    font-size: 20px;
+    font-weight: bold;
+}
 
-    .logo {
-      font-size: 27px;
-      font-weight: bold;
-    }
+.box {
+    margin: 10px;
+    border: 1px solid #b7cde2;
+    background: white;
+}
 
-    .tagline {
-      font-size: 12px;
-      margin-top: 4px;
-    }
+.title {
+    background: #ffe45c;
+    padding: 8px;
+    font-weight: bold;
+}
 
-    .nav {
-      background: #f4d03f;
-      border-bottom: 1px solid #c7a900;
-      text-align: center;
-      padding: 8px;
-    }
+.content {
+    padding: 10px;
+}
 
-    .nav a {
-      color: #174b8a;
-      font-weight: bold;
-      text-decoration: none;
-      margin: 0 5px;
-    }
+label {
+    display: block;
+    margin-top: 9px;
+    font-weight: bold;
+}
 
-    .box {
-      margin: 10px;
-      border: 1px solid #c4d5e5;
-      background: #f8fbff;
-    }
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 9px;
+    margin-top: 4px;
+    border: 1px solid #aaa;
+    font-size: 14px;
+}
 
-    .title {
-      padding: 8px;
-      background: #f1c40f;
-      border-bottom: 1px solid #d0a900;
-      font-weight: bold;
-    }
+textarea {
+    height: 75px;
+    resize: vertical;
+}
 
-    .content {
-      padding: 12px;
-    }
+button {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    border: 0;
+    background: #1769aa;
+    color: white;
+    font-weight: bold;
+    font-size: 15px;
+}
 
-    label {
-      display: block;
-      margin-top: 10px;
-      margin-bottom: 4px;
-      font-weight: bold;
-    }
+button:disabled {
+    background: #888;
+}
 
-    input,
-    textarea,
-    select {
-      width: 100%;
-      padding: 9px;
-      border: 1px solid #aebfd0;
-      border-radius: 3px;
-      background: white;
-      font-family: Arial, sans-serif;
-      font-size: 14px;
-    }
+.message {
+    display: none;
+    margin-top: 10px;
+    padding: 8px;
+}
 
-    textarea {
-      min-height: 70px;
-      resize: vertical;
-    }
+.success {
+    background: #d9f7d9;
+    border: 1px solid #8ac98a;
+}
 
-    .button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 15px;
-      border: 0;
-      border-radius: 3px;
-      background: #16843b;
-      color: white;
-      font-weight: bold;
-      font-size: 15px;
-    }
+.error {
+    background: #ffdede;
+    border: 1px solid #e09090;
+}
 
-    .note {
-      margin-top: 10px;
-      padding: 8px;
-      background: #fff8d8;
-      border: 1px solid #e6d477;
-      font-size: 12px;
-    }
+.links {
+    padding: 10px;
+    text-align: center;
+}
 
-    .footer {
-      margin-top: 18px;
-      padding: 13px 8px;
-      text-align: center;
-      background: #164a7b;
-      color: white;
-      font-size: 12px;
-    }
-
-    .footer a {
-      color: white;
-    }
-  </style>
+a {
+    color: #075aaa;
+    text-decoration: none;
+}
+</style>
 </head>
 
 <body>
 
-<div class="site">
+<div class="header">
+    DeeChat
+</div>
 
-  <div class="header">
-    <div class="logo">💬 DeeChat</div>
-    <div class="tagline">
-      Create your account
-    </div>
-  </div>
-
-  <div class="nav">
-    <a href="index.html">Home</a> |
-    <a href="login.html">Login</a> |
-    <a href="register.html">Register</a>
-  </div>
-
-  <div class="box">
+<div class="box">
 
     <div class="title">
-      📝 Create DeeChat Account
+        Create Your DeeChat Account
     </div>
 
     <div class="content">
 
-      <form id="registerForm">
+        <form id="registerForm">
 
-        <label for="username">Username</label>
-        <input
-          type="text"
-          id="username"
-          name="username"
-          maxlength="30"
-          placeholder="Choose a username"
-          required
-        >
+            <label for="username">Username</label>
+            <input
+                type="text"
+                id="username"
+                maxlength="20"
+                required
+                placeholder="Choose a username"
+            >
 
-        <label for="email">Email Address</label>
-        <input
-          type="email"
-          id="email"
-          name="email"
-          placeholder="Enter your email"
-          required
-        >
+            <label for="email">Email</label>
+            <input
+                type="email"
+                id="email"
+                required
+                placeholder="you@example.com"
+            >
 
-        <label for="password">Password</label>
-        <input
-          type="password"
-          id="password"
-          name="password"
-          minlength="8"
-          placeholder="Create a password"
-          required
-        >
+            <label for="password">Password</label>
+            <input
+                type="password"
+                id="password"
+                minlength="6"
+                required
+                placeholder="At least 6 characters"
+            >
 
-        <label for="confirmPassword">Confirm Password</label>
-        <input
-          type="password"
-          id="confirmPassword"
-          name="confirmPassword"
-          minlength="8"
-          placeholder="Enter password again"
-          required
-        >
+            <label for="confirmPassword">Confirm Password</label>
+            <input
+                type="password"
+                id="confirmPassword"
+                minlength="6"
+                required
+                placeholder="Enter password again"
+            >
 
-        <label for="gender">Gender</label>
-        <select id="gender" name="gender">
-          <option value="">Select</option>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-          <option value="other">Other</option>
-          <option value="prefer_not_to_say">
-            Prefer not to say
-          </option>
-        </select>
+            <label for="gender">Gender</label>
+            <select id="gender">
+                <option value="">Select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+                <option value="Prefer not to say">
+                    Prefer not to say
+                </option>
+            </select>
 
-        <label for="bio">Short Bio</label>
-        <textarea
-          id="bio"
-          name="bio"
-          maxlength="250"
-          placeholder="Tell us a little about yourself"
-        ></textarea>
+            <label for="bio">Bio</label>
+            <textarea
+                id="bio"
+                maxlength="500"
+                placeholder="Tell members something about you..."
+            ></textarea>
 
-        <button class="button" type="submit">
-          📝 Create Account
-        </button>
+            <button type="submit" id="registerButton">
+                Create Account
+            </button>
 
-      </form>
+        </form>
 
-      <div class="note">
-        By registering, you agree to follow the DeeChat
-        community rules.
-      </div>
-
-      <p style="text-align:center;">
-        Already have an account?
-        <a href="login.html">Login here →</a>
-      </p>
+        <div id="message" class="message"></div>
 
     </div>
-
-  </div>
-
-  <div class="footer">
-    <strong>DeeChat</strong>
-    <br><br>
-
-    <a href="#">Rules</a> |
-    <a href="#">Privacy</a> |
-    <a href="#">Help</a>
-
-    <br><br>
-
-    © 2026 DeeChat
-  </div>
-
 </div>
 
+<div class="links">
+    Already have an account?
+    <a href="login.html">Login</a>
+</div>
+
+<div class="links">
+    <a href="index.html">← Back to DeeChat</a>
+</div>
+
+
 <script>
-  document.getElementById("registerForm").addEventListener("submit", function(e) {
-    e.preventDefault();
 
-    const password = document.getElementById("password").value;
+/* ==============================
+   DEECHAT SUPABASE CONNECTION
+   ============================== */
+
+const SUPABASE_URL =
+    "https://sqikfejouaxizvidivcg.supabase.co";
+
+const SUPABASE_KEY =
+    "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+
+/* ==============================
+   FORM ELEMENTS
+   ============================== */
+
+const form =
+    document.getElementById("registerForm");
+
+const button =
+    document.getElementById("registerButton");
+
+const message =
+    document.getElementById("message");
+
+
+/* ==============================
+   MESSAGE FUNCTION
+   ============================== */
+
+function showMessage(text, type) {
+
+    message.textContent = text;
+
+    message.className =
+        "message " + type;
+
+    message.style.display = "block";
+}
+
+
+/* ==============================
+   REGISTRATION
+   ============================== */
+
+form.addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+    const username =
+        document.getElementById("username")
+        .value
+        .trim();
+
+    const email =
+        document.getElementById("email")
+        .value
+        .trim();
+
+    const password =
+        document.getElementById("password")
+        .value;
+
     const confirmPassword =
-      document.getElementById("confirmPassword").value;
+        document.getElementById("confirmPassword")
+        .value;
 
-    if (password !== confirmPassword) {
-      alert("Passwords do not match.");
-      return;
+    const gender =
+        document.getElementById("gender")
+        .value;
+
+    const bio =
+        document.getElementById("bio")
+        .value
+        .trim();
+
+
+    /* USERNAME CHECK */
+
+    if (username.length < 3) {
+
+        showMessage(
+            "Username must be at least 3 characters.",
+            "error"
+        );
+
+        return;
     }
 
-    alert(
-      "Registration form is ready. The real account system will be connected when we add the backend."
-    );
-  });
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+
+        showMessage(
+            "Username can only contain letters, numbers and underscores.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    /* PASSWORD CHECK */
+
+    if (password.length < 6) {
+
+        showMessage(
+            "Password must be at least 6 characters.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    if (password !== confirmPassword) {
+
+        showMessage(
+            "Passwords do not match.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    /* DISABLE BUTTON */
+
+    button.disabled = true;
+
+    button.textContent =
+        "Creating account...";
+
+
+    /* ==============================
+       SUPABASE SIGN UP
+       ============================== */
+
+    const { data, error } =
+        await supabaseClient.auth.signUp({
+
+            email: email,
+
+            password: password,
+
+            options: {
+
+                data: {
+
+                    username: username,
+
+                    display_name: username,
+
+                    gender: gender,
+
+                    bio: bio
+
+                }
+
+            }
+
+        });
+
+
+    /* ==============================
+       ERROR
+       ============================== */
+
+    if (error) {
+
+        showMessage(
+            error.message,
+            "error"
+        );
+
+        button.disabled = false;
+
+        button.textContent =
+            "Create Account";
+
+        return;
+    }
+
+
+    /* ==============================
+       SUCCESS
+       ============================== */
+
+    if (data.user) {
+
+        if (data.session) {
+
+            showMessage(
+                "Account created successfully! Opening DeeChat...",
+                "success"
+            );
+
+            setTimeout(function() {
+
+                window.location.href =
+                    "homepage.html";
+
+            }, 1200);
+
+        } else {
+
+            showMessage(
+                "Account created! Check your email and confirm your account before logging in.",
+                "success"
+            );
+
+            button.disabled = false;
+
+            button.textContent =
+                "Create Account";
+        }
+
+    }
+
+});
+
 </script>
 
 </body>
