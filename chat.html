@@ -2,126 +2,114 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Chat Rooms - DeeChat</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 body{
     margin:0;
-    background:#eaf7ff;
+    background:#eaf6ff;
     font-family:Arial,sans-serif;
     font-size:14px;
     color:#222;
 }
 a{color:#0645ad;text-decoration:none}
 .header{
-    background:#1683c7;
-    color:white;
+    background:#075eaa;
+    color:#fff;
     padding:10px;
     font-size:20px;
     font-weight:bold;
 }
 .nav{
-    background:#d8efff;
+    background:#fff;
+    border-bottom:1px solid #aaa;
     padding:7px;
     line-height:25px;
-    border-bottom:1px solid #9acbe8;
 }
 .box{
     margin:8px;
-    border:1px solid #b5cddd;
-    background:white;
+    background:#fff;
+    border:1px solid #aaa;
 }
 .title{
-    background:#ffd83d;
+    background:#ffd84d;
+    border-bottom:1px solid #aaa;
     padding:7px;
     font-weight:bold;
 }
 .content{padding:8px}
-.room{
-    border-bottom:1px solid #ddd;
-    padding:8px 2px;
+button,input{
+    box-sizing:border-box;
+    padding:8px;
+    border:1px solid #999;
+    font-size:14px;
 }
-.room:last-child{border-bottom:0}
-.room-link{
+button{
+    background:#075eaa;
+    color:#fff;
+    border:1px solid #034477;
     font-weight:bold;
-    color:#0645ad;
 }
-.room-desc{
-    color:#666;
-    font-size:12px;
-    margin-top:3px;
+.roomBtn{
+    display:block;
+    width:100%;
+    margin:4px 0;
+    text-align:left;
 }
-.selected{
-    background:#e8f6ff;
+.chatBox{
+    max-height:380px;
+    overflow-y:auto;
+    background:#f8fcff;
+    padding:5px;
 }
 .message{
     border-bottom:1px solid #ddd;
-    padding:8px 2px;
+    padding:7px 3px;
 }
-.message:last-child{border-bottom:0}
-.username{font-weight:bold}
 .meta{
     color:#777;
-    font-size:11px;
-}
-.body{
-    margin-top:4px;
-    white-space:pre-wrap;
-    line-height:1.4;
+    font-size:12px;
 }
 .role{
-    display:inline-block;
-    padding:1px 4px;
-    font-size:10px;
-    border:1px solid #ccc;
-    margin-left:3px;
-}
-.owner{
-    background:#ffd700;
-    border-color:#c5a900;
-}
-.staff{
-    background:#cceeff;
-    color:#005580;
-}
-.verified{
-    color:#008000;
+    color:#c00;
+    font-weight:bold;
 }
 .online{
-    color:#008000;
-    font-size:11px;
+    color:green;
+    font-weight:bold;
 }
-textarea{
+.game{
+    border:1px solid #bbb;
+    background:#fffef0;
+    padding:8px;
+    margin:6px 0;
+}
+.gameTitle{
+    font-weight:bold;
+    font-size:16px;
+}
+.gameInfo{
+    color:#555;
+    font-size:12px;
+    margin:4px 0;
+}
+.gameBtn{
     width:100%;
-    box-sizing:border-box;
-    min-height:65px;
-    padding:7px;
-    border:1px solid #aaa;
-}
-button{
-    background:#1683c7;
-    color:white;
-    border:0;
-    padding:7px 12px;
     margin-top:5px;
 }
-button:disabled{
-    background:#999;
+.players{
+    padding:5px;
+    background:#f1f1f1;
+    margin-top:5px;
 }
-.notice{
-    background:#fff8c7;
-    border:1px solid #e5d36b;
-    padding:7px;
-    margin-bottom:7px;
-}
-.error{color:#b00000;padding:7px}
-.success{color:#008000;padding:7px}
-.small{font-size:12px;color:#777}
+.error{color:#c00;font-weight:bold}
+.success{color:green;font-weight:bold}
+.hidden{display:none}
 .footer{
     text-align:center;
-    padding:15px 8px;
+    padding:15px 5px;
     color:#777;
     font-size:12px;
 }
@@ -130,71 +118,95 @@ button:disabled{
 
 <body>
 
-<div class="header">💬 DeeChat Chat</div>
+<div class="header">💬 DeeChat</div>
 
 <div class="nav">
 <a href="homepage.html">Home</a> |
 <a href="shouts.html">Shouts</a> |
 <a href="topics.html">Topics</a> |
 <a href="members.html">Members</a> |
-<a href="groups.html">Groups</a>
+<a href="groups.html">Groups</a> |
+<a href="profile.html">Profile</a> |
+<a href="messages.html">Messages</a> |
+<a href="#" onclick="logout()">Logout</a>
 </div>
 
-<div id="message"></div>
+<div class="box">
+<div class="title">💰 My Balance</div>
+<div class="content">
+🪙 GC: <b id="gcBalance">0</b>
+&nbsp; | &nbsp;
+⭐ Credits: <b id="creditBalance">0</b>
+</div>
+</div>
 
 <div class="box">
 <div class="title">Chat Rooms</div>
-<div class="content" id="rooms">
+<div class="content" id="roomList">
 Loading rooms...
 </div>
 </div>
 
+<div id="roomArea" class="hidden">
+
 <div class="box">
-<div class="title" id="roomTitle">Select a Room</div>
+<div class="title">
+💬 <span id="roomName">Room</span>
+</div>
 
 <div class="content">
+<div id="roomInfo"></div>
 
 <div id="announcement"></div>
 
-<div id="messages">
-Select a room to view messages.
+<div class="chatBox" id="messages">
+Loading messages...
 </div>
 
+<div id="lockedMessage" class="error hidden">
+This room is locked.
+</div>
+
+<div style="display:flex;gap:4px;margin-top:5px">
+<input
+id="messageInput"
+placeholder="Write a message..."
+style="flex:1">
+
+<button
+onclick="sendMessage()"
+style="width:80px">
+Send
+</button>
+</div>
 </div>
 </div>
 
 <div class="box">
-
-<div class="title">Send Message</div>
+<div class="title">🎮 Multiplayer Room Games</div>
 
 <div class="content">
 
-<textarea
-id="messageInput"
-placeholder="Write a message..."
-disabled
-></textarea>
+<div class="meta">
+Use ⭐ Credits to enter a multiplayer game.
+All players' entry fees form the pot.
+The winner receives the pot.
+</div>
 
-<br>
+<div id="gamesList">
+Loading games...
+</div>
 
-<button
-id="sendBtn"
-disabled
->
-Send Message
-</button>
-
+</div>
 </div>
 
 </div>
 
 <div class="footer">
-© 2026 DeeChat
+©DaVeCrEaToR DeeChat 2026
 </div>
 
-
 <script>
-
 const SUPABASE_URL =
 "https://sqikfejouaxizvidivcg.supabase.co";
 
@@ -208,270 +220,196 @@ SUPABASE_KEY
 );
 
 let currentUser=null;
+let currentProfile=null;
 let currentRoom=null;
-let rooms=[];
+let messageTimer=null;
+let gameTimer=null;
 
-
-/* ESCAPE */
-
-function escapeHTML(value){
-
-return String(value ?? "")
+function esc(text){
+return String(text??"")
 .replace(/&/g,"&amp;")
 .replace(/</g,"&lt;")
 .replace(/>/g,"&gt;")
 .replace(/"/g,"&quot;")
 .replace(/'/g,"&#039;");
-
 }
 
+function roleTag(role){
+const roles={
+owner:"[OWNER]",
+super_admin:"[SUPER ADMIN]",
+admin:"[ADMIN]",
+head_mod:"[HEAD MOD]",
+moderator:"[MOD]",
+vip:"[VIP]",
+verified_member:"[VERIFIED]",
+member:"[MEMBER]",
+new_member:"[NEW MEMBER]"
+};
 
-/* ROLE */
-
-function roleTag(profile){
-
-if(!profile) return "";
-
-const role=profile.site_role;
-
-if(role==="owner")
-return `<span class="role owner">OWNER</span>`;
-
-if(role==="super_admin")
-return `<span class="role staff">SUPER ADMIN</span>`;
-
-if(role==="admin")
-return `<span class="role staff">ADMIN</span>`;
-
-if(role==="head_mod")
-return `<span class="role staff">HEAD MOD</span>`;
-
-if(role==="moderator")
-return `<span class="role staff">MOD</span>`;
-
-if(role==="vip")
-return `<span class="role staff">VIP</span>`;
-
-if(role==="verified_member")
-return `<span class="role staff">VERIFIED</span>`;
-
-return "";
-
+return roles[role]||"";
 }
 
+async function start(){
 
-/* LOGIN */
-
-async function checkLogin(){
-
-const {data,error} =
+const {data:{session}}=
 await supabaseClient.auth.getSession();
 
-if(error || !data.session){
-
-window.location.href="login.html";
-
-return false;
-
+if(!session){
+location.href="login.html";
+return;
 }
 
-currentUser=data.session.user;
+currentUser=session.user;
 
-return true;
+await loadProfile();
+await loadRooms();
+await loadGames();
 
+gameTimer=setInterval(loadGames,5000);
 }
 
+async function loadProfile(){
 
-/* LOAD ROOMS */
+const {data,error}=
+await supabaseClient
+.from("profiles")
+.select("*")
+.eq("id",currentUser.id)
+.single();
+
+if(error)return;
+
+currentProfile=data;
+
+document.getElementById("gcBalance").textContent=
+Number(data.gc||0).toLocaleString();
+
+document.getElementById("creditBalance").textContent=
+Number(data.credits||0).toLocaleString();
+}
 
 async function loadRooms(){
 
-const {data,error} =
+const list=document.getElementById("roomList");
+
+const {data,error}=
 await supabaseClient
 .from("rooms")
-.select(`
-id,
-name,
-description,
-visibility,
-is_locked,
-pinned_announcement,
-created_at
-`)
+.select("*")
+.eq("visibility","public")
 .order("created_at",{ascending:true});
 
 if(error){
-
-document.getElementById("rooms").innerHTML=
-`<div class="error">
-Could not load rooms.
-</div>`;
-
-console.error(error);
-
+list.innerHTML=
+'<div class="error">'+esc(error.message)+'</div>';
 return;
-
 }
 
-rooms=data || [];
-
-renderRooms();
-
-}
-
-
-/* RENDER ROOMS */
-
-function renderRooms(){
-
-const container=
-document.getElementById("rooms");
-
-if(!rooms.length){
-
-container.innerHTML=
-`<div class="small">
-No chat rooms have been created yet.
-</div>`;
-
+if(!data||data.length===0){
+list.innerHTML="<div>No public rooms yet.</div>";
 return;
-
 }
 
-container.innerHTML=
-rooms.map(room=>{
+list.innerHTML=data.map(room=>`
+<button
+class="roomBtn"
+onclick="openRoom('${room.id}')">
 
-const active=
-currentRoom &&
-currentRoom.id===room.id
-?"selected":"";
+💬 <b>${esc(room.name)}</b>
 
-return `
+${room.is_locked ? " 🔒" : ""}
 
-<div class="room ${active}">
+<br>
+<span class="meta">
+${esc(room.description||"")}
+</span>
 
-<a
-href="#"
-class="room-link"
-onclick="selectRoom('${room.id}');return false;"
->
-${room.is_locked?"🔒 ":""}💬
-${escapeHTML(room.name)}
-</a>
+</button>
+`).join("");
+}
 
-<div class="room-desc">
-${escapeHTML(room.description || "No description")}
+async function openRoom(roomId){
+
+const {data,error}=
+await supabaseClient
+.from("rooms")
+.select("*")
+.eq("id",roomId)
+.single();
+
+if(error||!data){
+alert("Room could not be opened.");
+return;
+}
+
+currentRoom=data;
+
+document.getElementById("roomArea")
+.classList.remove("hidden");
+
+document.getElementById("roomName")
+.textContent=data.name;
+
+document.getElementById("roomInfo").innerHTML=
+esc(data.description||"");
+
+if(data.pinned_announcement){
+
+document.getElementById("announcement").innerHTML=`
+<div class="game">
+📌 <b>Room Announcement</b><br>
+${esc(data.pinned_announcement)}
 </div>
-
-<div class="meta">
-${escapeHTML(room.visibility || "public")}
-</div>
-
-</div>
-
 `;
 
-}).join("");
-
+}else{
+document.getElementById("announcement").innerHTML="";
 }
 
+if(data.is_locked){
 
-/* SELECT ROOM */
+document.getElementById("lockedMessage")
+.classList.remove("hidden");
 
-async function selectRoom(roomId){
-
-const room=
-rooms.find(r=>r.id===roomId);
-
-if(!room) return;
-
-currentRoom=room;
-
-document.getElementById("roomTitle")
-.innerText=
-"💬 "+room.name;
-
-document.getElementById("messageInput")
-.disabled=room.is_locked;
-
-document.getElementById("sendBtn")
-.disabled=room.is_locked;
-
-if(room.is_locked){
-
-document.getElementById("messageInput")
-.placeholder="This room is locked.";
+document.getElementById("messageInput").disabled=true;
 
 }else{
 
-document.getElementById("messageInput")
-.placeholder=
-"Write a message...";
+document.getElementById("lockedMessage")
+.classList.add("hidden");
 
+document.getElementById("messageInput").disabled=false;
 }
-
-renderRooms();
-
-renderAnnouncement();
 
 await loadMessages();
 
+if(messageTimer)clearInterval(messageTimer);
+
+messageTimer=setInterval(loadMessages,3000);
+
+await loadGames();
 }
-
-
-/* ANNOUNCEMENT */
-
-function renderAnnouncement(){
-
-const box=
-document.getElementById("announcement");
-
-if(!currentRoom ||
-!currentRoom.pinned_announcement){
-
-box.innerHTML="";
-
-return;
-
-}
-
-box.innerHTML=
-`<div class="notice">
-📌 <b>Announcement:</b><br>
-${escapeHTML(
-currentRoom.pinned_announcement
-)}
-</div>`;
-
-}
-
-
-/* LOAD MESSAGES */
 
 async function loadMessages(){
 
-if(!currentRoom) return;
+if(!currentRoom)return;
 
-document.getElementById("messages")
-.innerHTML="Loading messages...";
-
-
-const {data,error} =
+const {data,error}=
 await supabaseClient
 .from("messages")
 .select(`
 id,
+user_id,
 body,
+created_at,
 is_hidden,
 is_pinned,
-created_at,
-user_id,
-profiles:user_id(
+profiles(
 username,
 display_name,
 site_role,
-is_verified,
-last_active_at
+is_verified
 )
 `)
 .eq("room_id",currentRoom.id)
@@ -479,206 +417,78 @@ last_active_at
 .order("created_at",{ascending:true})
 .limit(100);
 
+const box=document.getElementById("messages");
 
 if(error){
-
-document.getElementById("messages")
-.innerHTML=
-`<div class="error">
-Could not load messages.
-</div>`;
-
-console.error(error);
-
+box.innerHTML=
+'<div class="error">'+esc(error.message)+'</div>';
 return;
-
 }
 
-
-if(!data || data.length===0){
-
-document.getElementById("messages")
-.innerHTML=
-`<div class="small">
-No messages yet. Start the conversation!
-</div>`;
-
+if(!data||data.length===0){
+box.innerHTML="<div>No messages yet.</div>";
 return;
-
 }
 
+box.innerHTML=data.map(m=>{
 
-document.getElementById("messages")
-.innerHTML=
-data.map(msg=>{
-
-const profile=msg.profiles;
-
-const verified=
-profile?.is_verified
-?`<span class="verified">✔</span>`
-:"";
-
-const pinned=
-msg.is_pinned
-?`<div class="small">📌 Pinned</div>`
-:"";
+const p=m.profiles||{};
 
 return `
-
 <div class="message">
 
-<div class="username">
+${m.is_pinned?"📌 ":""}
 
-<a href="profile.html?id=${msg.user_id}">
-${escapeHTML(
-profile?.display_name ||
-profile?.username ||
-"Member"
-)}
+<a href="profile.html?id=${encodeURIComponent(m.user_id)}">
+<b>${esc(p.display_name||p.username||"Member")}</b>
 </a>
 
-${roleTag(profile)}
-${verified}
+<span class="role">
+${esc(roleTag(p.site_role))}
+</span>
 
+${p.is_verified?" ✓":""}
+
+<div>
+${esc(m.body).replace(/\n/g,"<br>")}
 </div>
 
 <div class="meta">
-${new Date(msg.created_at).toLocaleString()}
-</div>
-
-${pinned}
-
-<div class="body">
-${escapeHTML(msg.body)}
+${new Date(m.created_at).toLocaleTimeString()}
 </div>
 
 </div>
-
 `;
 
 }).join("");
 
-
-/* Scroll chat to bottom */
-
-const box=
-document.getElementById("messages");
-
 box.scrollTop=box.scrollHeight;
-
 }
-
-
-/* SEND MESSAGE */
-
-document.getElementById("sendBtn")
-.addEventListener("click",sendMessage);
-
-
-document.getElementById("messageInput")
-.addEventListener("keydown",function(event){
-
-if(event.key==="Enter" && !event.shiftKey){
-
-event.preventDefault();
-
-sendMessage();
-
-}
-
-});
-
 
 async function sendMessage(){
 
-if(!currentUser || !currentRoom)
-return;
+if(!currentRoom||currentRoom.is_locked)return;
 
-if(currentRoom.is_locked)
-return;
+const input=document.getElementById("messageInput");
+const body=input.value.trim();
 
+if(!body)return;
 
-const input=
-document.getElementById("messageInput");
-
-const body=
-input.value.trim();
-
-if(!body){
-
-document.getElementById("message")
-.innerHTML=
-`<div class="error">
-Write a message first.
-</div>`;
-
-return;
-
-}
-
-
-const button=
-document.getElementById("sendBtn");
-
-button.disabled=true;
-
-button.innerText="Sending...";
-
-
-const {error} =
+const {error}=
 await supabaseClient
 .from("messages")
 .insert({
-
 room_id:currentRoom.id,
-
 user_id:currentUser.id,
-
-body:body
-
+body
 });
 
-
 if(error){
-
-document.getElementById("message")
-.innerHTML=
-`<div class="error">
-${escapeHTML(error.message)}
-</div>`;
-
-button.disabled=false;
-
-button.innerText="Send Message";
-
+alert(error.message);
 return;
-
 }
-
 
 input.value="";
-
-document.getElementById("message")
-.innerHTML=
-`<div class="success">
-Message sent.
-</div>`;
-
-button.disabled=false;
-
-button.innerText="Send Message";
-
-await loadMessages();
-
-}
-
-
-/* UPDATE LAST ACTIVE */
-
-async function updateLastActive(){
-
-if(!currentUser) return;
 
 await supabaseClient
 .from("profiles")
@@ -687,24 +497,294 @@ last_active_at:new Date().toISOString()
 })
 .eq("id",currentUser.id);
 
+await loadMessages();
+}
+
+document.getElementById("messageInput")
+.addEventListener("keydown",function(e){
+
+if(e.key==="Enter"){
+e.preventDefault();
+sendMessage();
+}
+
+});
+
+
+// ================================
+// MULTIPLAYER CHATROOM GAMES
+// ================================
+
+async function loadGames(){
+
+const list=document.getElementById("gamesList");
+
+if(!currentRoom){
+
+list.innerHTML=
+"<div>Select a chatroom to see its games.</div>";
+
+return;
+}
+
+/*
+Expected database table:
+
+room_games
+- id
+- room_id
+- name
+- description
+- min_players
+- max_players
+- entry_credits
+- status
+- created_at
+
+Expected:
+
+room_game_players
+- id
+- game_id
+- user_id
+- joined_at
+- finished
+- position
+*/
+
+const {data,error}=
+await supabaseClient
+.from("room_games")
+.select("*")
+.eq("room_id",currentRoom.id)
+.in("status",["waiting","playing"])
+.order("created_at",{ascending:false});
+
+if(error){
+
+if(error.message.toLowerCase().includes("room_games")){
+
+list.innerHTML=`
+<div class="game">
+🎮 Multiplayer games are being prepared.
+</div>
+`;
+
+return;
+}
+
+list.innerHTML=
+'<div class="error">'+esc(error.message)+'</div>';
+
+return;
+}
+
+if(!data||data.length===0){
+
+list.innerHTML=`
+<div class="game">
+No multiplayer games are currently open.
+</div>
+`;
+
+return;
+}
+
+let html="";
+
+for(const game of data){
+
+const {data:players}=
+await supabaseClient
+.from("room_game_players")
+.select(`
+user_id,
+joined_at,
+profiles(
+username,
+display_name
+)
+`)
+.eq("game_id",game.id);
+
+const playerList=players||[];
+
+const joined=playerList.some(
+p=>p.user_id===currentUser.id
+);
+
+const pot=
+playerList.length *
+Number(game.entry_credits||0);
+
+html+=`
+
+<div class="game">
+
+<div class="gameTitle">
+🎮 ${esc(game.name)}
+</div>
+
+<div class="gameInfo">
+${esc(game.description||"")}
+</div>
+
+<div>
+Entry:
+<b>⭐ ${Number(game.entry_credits||0)}</b>
+Credits
+</div>
+
+<div>
+Players:
+<b>${playerList.length}</b>
+/
+${Number(game.max_players||2)}
+</div>
+
+<div>
+Current Pot:
+<b>⭐ ${pot.toLocaleString()}</b>
+Credits
+</div>
+
+<div class="players">
+
+<b>Players:</b><br>
+
+${
+playerList.length
+?
+playerList.map(p=>
+"👤 "+esc(
+p.profiles?.display_name||
+p.profiles?.username||
+"Player"
+)
+).join("<br>")
+:
+"No players yet."
+}
+
+</div>
+
+${
+joined
+?
+'<button class="gameBtn" disabled>✓ Joined</button>'
+:
+`<button
+class="gameBtn"
+onclick="joinGame('${game.id}')">
+Join Game — ⭐ ${Number(game.entry_credits||0)} Credits
+</button>`
+}
+
+</div>
+`;
+}
+
+list.innerHTML=html;
+}
+
+async function joinGame(gameId){
+
+const {data:game,error:gameError}=
+await supabaseClient
+.from("room_games")
+.select("*")
+.eq("id",gameId)
+.single();
+
+if(gameError||!game){
+alert("Game not found.");
+return;
+}
+
+const entry=
+Number(game.entry_credits||0);
+
+const credits=
+Number(currentProfile?.credits||0);
+
+if(credits<entry){
+alert(
+"You need "+entry+
+" Credits ⭐ to enter this game."
+);
+return;
+}
+
+const {data:existing}=
+await supabaseClient
+.from("room_game_players")
+.select("id")
+.eq("game_id",gameId)
+.eq("user_id",currentUser.id)
+.maybeSingle();
+
+if(existing){
+alert("You are already in this game.");
+return;
+}
+
+const {data:players}=
+await supabaseClient
+.from("room_game_players")
+.select("id")
+.eq("game_id",gameId);
+
+if(players && players.length>=Number(game.max_players||2)){
+alert("This game is full.");
+return;
+}
+
+/*
+IMPORTANT:
+
+The actual credit deduction and player joining
+should eventually be handled by a secure Supabase
+RPC/Edge Function so players cannot manipulate
+their own Credits from the browser.
+
+This frontend only requests the transaction.
+*/
+
+const {data:result,error}=
+await supabaseClient.rpc(
+"join_room_game",
+{
+p_game_id:gameId
+}
+);
+
+if(error){
+
+alert(
+"Game entry could not be completed: "+
+error.message
+);
+
+return;
+}
+
+await loadProfile();
+await loadGames();
 }
 
 
-/* START */
+// Refresh balance periodically
+setInterval(loadProfile,5000);
 
-(async function(){
 
-const loggedIn=
-await checkLogin();
+async function logout(){
 
-if(!loggedIn) return;
+await supabaseClient.auth.signOut();
 
-await updateLastActive();
+location.href="index.html";
+}
 
-await loadRooms();
-
-})();
-
+start();
 </script>
 
 </body>
