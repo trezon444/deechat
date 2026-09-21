@@ -2,361 +2,349 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DeeChat - Home</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-* {
-    box-sizing: border-box;
+body{
+    margin:0;
+    background:#eaf4ff;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+    color:#222;
 }
 
-body {
-    margin: 0;
-    background: #eaf4ff;
-    font-family: Arial, sans-serif;
-    font-size: 13px;
-    color: #333;
+.header{
+    background:#1976d2;
+    color:white;
+    text-align:center;
+    padding:10px;
+    font-size:21px;
+    font-weight:bold;
 }
 
-.header {
-    background: #1769aa;
-    color: white;
-    padding: 10px;
+.top{
+    background:#fff;
+    border-bottom:1px solid #aaa;
+    padding:7px;
+    text-align:center;
 }
 
-.logo {
-    font-size: 21px;
-    font-weight: bold;
+.top a{
+    color:#0645ad;
+    text-decoration:none;
+    margin:0 5px;
 }
 
-.userbar {
-    margin-top: 4px;
-    font-size: 12px;
+.box{
+    margin:8px;
+    background:white;
+    border:1px solid #aaa;
 }
 
-.nav {
-    background: white;
-    border-bottom: 1px solid #b7cde2;
-    padding: 7px;
-    line-height: 1.8;
+.title{
+    background:#ffe680;
+    border-bottom:1px solid #d4b900;
+    padding:7px;
+    font-weight:bold;
 }
 
-.nav a {
-    color: #075aaa;
-    text-decoration: none;
-    margin-right: 8px;
+.content{
+    padding:8px;
 }
 
-.box {
-    margin: 8px;
-    background: white;
-    border: 1px solid #b7cde2;
+a{
+    color:#0645ad;
+    text-decoration:none;
 }
 
-.title {
-    background: #ffe45c;
-    padding: 7px;
-    font-weight: bold;
+a:hover{
+    text-decoration:underline;
 }
 
-.content {
-    padding: 8px;
+.menu a{
+    display:block;
+    padding:8px;
+    border-bottom:1px solid #ddd;
 }
 
-.welcome {
-    color: #1769aa;
-    font-weight: bold;
+.welcome{
+    background:#f4fbff;
+    border:1px solid #b9d9f2;
 }
 
-.member {
-    padding: 7px 0;
-    border-bottom: 1px solid #eee;
+.rank{
+    font-weight:bold;
 }
 
-.member:last-child {
-    border-bottom: 0;
+.online{
+    color:green;
+    font-weight:bold;
 }
 
-.tag {
-    display: inline-block;
-    background: #1769aa;
-    color: white;
-    padding: 2px 4px;
-    font-size: 10px;
-    margin-left: 3px;
+.small{
+    font-size:12px;
+    color:#666;
 }
 
-.owner {
-    background: #c40000;
+.highlight{
+    background:#fffbd7;
+    border:1px solid #e4d56b;
+    padding:8px;
+    margin-top:7px;
 }
 
-.online {
-    color: green;
-    font-weight: bold;
-}
-
-.link {
-    color: #075aaa;
-    text-decoration: none;
-}
-
-.small {
-    color: #777;
-    font-size: 11px;
-}
-
-.footer {
-    text-align: center;
-    padding: 15px 8px;
-    color: #777;
-    font-size: 11px;
+.footer{
+    text-align:center;
+    padding:15px 5px;
+    color:#666;
+    font-size:12px;
 }
 </style>
 </head>
 
 <body>
 
-<!-- HEADER -->
-
 <div class="header">
-
-    <div class="logo">
-        DeeChat
-    </div>
-
-    <div class="userbar">
-        Logged in as:
-        <span id="currentUser">Loading...</span>
-    </div>
-
+    💬 DeeChat
 </div>
 
-
-<!-- NAVIGATION -->
-
-<div class="nav">
-
-    <a href="homepage.html">Home</a>
-
-    <a href="shouts.html">Shouts</a>
-
-    <a href="#">Topics</a>
-
-    <a href="#">Chat</a>
-
-    <a href="#">Members</a>
-
-    <a href="#">Groups</a>
-
-    <a href="#">Profile</a>
-
-    <a href="#" id="logout">Logout</a>
-
+<div class="top">
+    <a href="homepage.html">Home</a> |
+    <a href="shouts.html">Shouts</a> |
+    <a href="topics.html">Topics</a> |
+    <a href="chat.html">Chat</a>
 </div>
-
-
-<!-- WELCOME -->
 
 <div class="box">
+    <div class="title">👋 Welcome to DeeChat</div>
 
-    <div class="title">
-        Welcome to DeeChat
+    <div class="content welcome">
+        Welcome back, <b id="displayName">Member</b>! 👋
+        <br><br>
+
+        DeeChat is your place to chat, meet people,
+        join groups, post topics and share shouts.
+        
+        <div class="highlight">
+            <b>🟢 You are logged in</b><br>
+            Enjoy the community!
+        </div>
     </div>
+</div>
+
+
+<div class="box">
+    <div class="title">👤 My Account</div>
+
+    <div class="content">
+        <b id="username">Loading...</b>
+        <br>
+
+        <span class="rank" id="rank"></span>
+        <br>
+
+        <span id="verified"></span>
+        <br>
+
+        <span class="online">● Online</span>
+        <br><br>
+
+        <a id="profileLink" href="profile.html">
+            👤 View My Profile
+        </a>
+        <br>
+
+        <a href="settings.html">
+            ⚙️ Account Settings
+        </a>
+        <br>
+
+        <a href="notifications.html">
+            🔔 Notifications
+        </a>
+        <br>
+
+        <a href="messages.html">
+            ✉️ Private Messages
+        </a>
+    </div>
+</div>
+
+
+<div class="box">
+    <div class="title">💬 Community</div>
+
+    <div class="menu">
+        <a href="chat.html">
+            💬 Chat Rooms
+        </a>
+
+        <a href="members.html">
+            👥 Online & All Members
+        </a>
+
+        <a href="shouts.html">
+            📢 Shouts
+        </a>
+
+        <a href="topics.html">
+            📝 Topics & Discussions
+        </a>
+
+        <a href="groups.html">
+            👥 Clubs & Groups
+        </a>
+
+        <a href="search.html">
+            🔎 Search DeeChat
+        </a>
+    </div>
+</div>
+
+
+<div class="box">
+    <div class="title">⭐ Today's Community</div>
 
     <div class="content">
 
-        <div class="welcome">
-            Welcome,
-            <span id="welcomeName">
-                Member
-            </span>!
-        </div>
+        <b>🔥 Topic of the Day</b>
+        <br>
+        <a href="topics.html">
+            View today's most popular topic
+        </a>
 
-        <p>
-            Welcome to the DeeChat community.
-        </p>
+        <br><br>
 
-        <p>
-            Chat, meet members, create topics,
-            join groups and share shouts.
-        </p>
+        <b>👑 Member of the Day</b>
+        <br>
+        <a href="members.html">
+            See today's featured member
+        </a>
+
+        <br><br>
+
+        <b>🏆 Club of the Week</b>
+        <br>
+        <a href="groups.html">
+            See the featured group
+        </a>
 
     </div>
-
 </div>
 
-
-<!-- ACCOUNT -->
 
 <div class="box">
+    <div class="title">📢 Quick Actions</div>
 
-    <div class="title">
-        My Account
-    </div>
+    <div class="menu">
 
-    <div class="content">
+        <a href="shouts.html">
+            ➕ Create a Shout
+        </a>
 
-        <div class="member">
-            Username:
-            <strong id="username">
-                Loading...
-            </strong>
-        </div>
+        <a href="topics.html">
+            ➕ Create a Topic
+        </a>
 
-        <div class="member">
-            Rank:
-            <span id="role">
-                Loading...
-            </span>
-        </div>
+        <a href="chat.html">
+            💬 Enter Chat
+        </a>
 
-        <div class="member">
-            Points:
-            <strong id="points">
-                0
-            </strong>
-        </div>
+        <a href="groups.html">
+            👥 Explore Groups
+        </a>
 
-        <div class="member">
-            Status:
-            <span class="online">
-                ● Online
-            </span>
-        </div>
-
-        <div class="member">
-            <a class="link" href="#">
-                View My Profile
-            </a>
-        </div>
+        <a href="members.html">
+            👤 Find Members
+        </a>
 
     </div>
-
 </div>
 
-
-<!-- COMMUNITY -->
 
 <div class="box">
-
-    <div class="title">
-        DeeChat Community
-    </div>
+    <div class="title">🛡️ DeeChat Staff</div>
 
     <div class="content">
+        Need help or want to report something?
 
-        <div class="member">
-            💬
-            <a class="link" href="#">
-                Chat Rooms
-            </a>
-        </div>
+        <br><br>
 
-        <div class="member">
-            📢
-            <a class="link" href="shouts.html">
-                Shouts
-            </a>
-        </div>
-
-        <div class="member">
-            📝
-            <a class="link" href="#">
-                Topics
-            </a>
-        </div>
-
-        <div class="member">
-            👥
-            <a class="link" href="#">
-                Online Members
-            </a>
-        </div>
-
-        <div class="member">
-            ⭐
-            <a class="link" href="#">
-                Groups
-            </a>
-        </div>
-
-        <div class="member">
-            🏆
-            <a class="link" href="#">
-                Leaderboard
-            </a>
-        </div>
-
+        <a href="admin_reports.html">
+            🚨 Report / Moderation
+        </a>
     </div>
-
 </div>
 
 
-<!-- HIGHLIGHTS -->
+<div class="box" id="ownerBox" style="display:none;">
+    <div class="title">👑 Owner Area</div>
+
+    <div class="content">
+        <b>Owner access detected.</b>
+
+        <br><br>
+
+        <a href="owner_dashboard.html">
+            👑 Open Owner Dashboard
+        </a>
+    </div>
+</div>
+
+
+<div class="box" id="staffBox" style="display:none;">
+    <div class="title">🛡️ Staff Area</div>
+
+    <div class="menu">
+
+        <a href="admin.html">
+            🛡️ Admin Dashboard
+        </a>
+
+        <a href="admin_users.html">
+            👥 Manage Users
+        </a>
+
+        <a href="admin_reports.html">
+            🚨 Reports
+        </a>
+
+        <a href="admin_rooms.html">
+            🚪 Manage Rooms
+        </a>
+
+        <a href="admin_groups.html">
+            👥 Manage Groups
+        </a>
+
+        <a href="admin_moderators.html">
+            🛡️ Staff & Moderators
+        </a>
+
+    </div>
+</div>
+
 
 <div class="box">
-
-    <div class="title">
-        Today's Highlights
-    </div>
-
     <div class="content">
-
-        <div class="member">
-            🔥
-            <a class="link" href="#">
-                Topic of the Day
-            </a>
-
-            <div class="small">
-                Most liked topic
-            </div>
-        </div>
-
-        <div class="member">
-            🏅
-            <a class="link" href="#">
-                Member of the Day
-            </a>
-
-            <div class="small">
-                Earn points and rewards
-            </div>
-        </div>
-
-        <div class="member">
-            ⭐
-            <a class="link" href="#">
-                Group of the Week
-            </a>
-
-            <div class="small">
-                Discover active groups
-            </div>
-        </div>
-
+        <a href="#" onclick="logout();return false;">
+            🚪 Logout
+        </a>
     </div>
-
 </div>
 
-
-<!-- FOOTER -->
 
 <div class="footer">
-
     © DeeChat 2026
-
+    <br>
+    Chat • Topics • Groups • Community
 </div>
 
 
 <script>
-
-/* ==============================
-   SUPABASE CONNECTION
-   ============================== */
 
 const SUPABASE_URL =
     "https://sqikfejouaxizvidivcg.supabase.co";
@@ -371,163 +359,186 @@ const supabaseClient =
     );
 
 
-/* ==============================
-   LOAD LOGGED-IN USER
-   ============================== */
-
-async function loadUser() {
+async function loadHome(){
 
     const {
-        data,
-        error
-    } =
-        await supabaseClient.auth.getSession();
+        data:{session}
+    } = await supabaseClient.auth.getSession();
 
+    if(!session){
 
-    /* NOT LOGGED IN */
-
-    if (error || !data.session) {
-
-        window.location.href =
-            "login.html";
-
+        location.href = "login.html";
         return;
+
     }
 
 
-    const user =
-        data.session.user;
-
-
-    /* SHOW EMAIL */
-
-    document.getElementById(
-        "currentUser"
-    ).textContent =
-        user.email;
-
-
-    /* GET PROFILE */
-
-    const {
-        data: profile,
-        error: profileError
-    } =
+    const {data:profile,error} =
         await supabaseClient
-            .from("profiles")
-            .select(`
-                username,
-                display_name,
-                site_role,
-                points,
-                is_verified
-            `)
-            .eq("id", user.id)
-            .single();
+        .from("profiles")
+        .select(`
+            id,
+            username,
+            display_name,
+            site_role,
+            is_verified,
+            is_banned,
+            is_suspended,
+            last_active_at
+        `)
+        .eq("id",session.user.id)
+        .single();
 
 
-    if (profileError) {
+    if(error || !profile){
 
-        console.error(profileError);
+        await supabaseClient.auth.signOut();
 
-        document.getElementById(
-            "welcomeName"
-        ).textContent =
-            "Member";
+        location.href = "login.html";
 
         return;
+
     }
 
 
-    /* DISPLAY NAME */
+    if(profile.is_banned){
 
-    const displayName =
+        alert("Your DeeChat account has been banned.");
+
+        await supabaseClient.auth.signOut();
+
+        location.href = "index.html";
+
+        return;
+
+    }
+
+
+    if(profile.is_suspended){
+
+        alert("Your DeeChat account is currently suspended.");
+
+        await supabaseClient.auth.signOut();
+
+        location.href = "index.html";
+
+        return;
+
+    }
+
+
+    const name =
         profile.display_name ||
         profile.username ||
         "Member";
 
 
     document.getElementById(
-        "welcomeName"
-    ).textContent =
-        displayName;
+        "displayName"
+    ).textContent = name;
 
-
-    /* USERNAME */
 
     document.getElementById(
         "username"
     ).textContent =
-        profile.username;
+        "@" + (profile.username || "member");
 
 
-    /* POINTS */
+    const roles = {
+
+        owner:"👑 OWNER",
+
+        super_admin:"🛡️ SUPER ADMIN",
+
+        admin:"🔧 ADMIN",
+
+        head_mod:"⚔️ HEAD MOD",
+
+        moderator:"🛡️ MODERATOR",
+
+        vip:"💎 VIP",
+
+        verified_member:"✅ VERIFIED MEMBER",
+
+        member:"👤 MEMBER",
+
+        new_member:"🌱 NEW MEMBER"
+
+    };
+
 
     document.getElementById(
-        "points"
+        "rank"
     ).textContent =
-        profile.points || 0;
+        roles[profile.site_role] ||
+        "👤 MEMBER";
 
 
-    /* ROLE */
+    if(profile.is_verified){
 
-    const roleElement =
-        document.getElementById("role");
-
-
-    let roleText =
-        profile.site_role
-            .replaceAll("_", " ")
-            .toUpperCase();
-
-
-    roleElement.textContent =
-        roleText;
-
-
-    /* OWNER TAG */
-
-    if (profile.site_role === "owner") {
-
-        roleElement.className =
-            "tag owner";
-
-    } else {
-
-        roleElement.className =
-            "tag";
+        document.getElementById(
+            "verified"
+        ).textContent =
+            "✅ Verified Member";
 
     }
+
+
+    document.getElementById(
+        "profileLink"
+    ).href =
+        "profile.html?id=" + profile.id;
+
+
+    const staffRoles = [
+        "owner",
+        "super_admin",
+        "admin",
+        "head_mod",
+        "moderator"
+    ];
+
+
+    if(profile.site_role === "owner"){
+
+        document.getElementById(
+            "ownerBox"
+        ).style.display = "block";
+
+    }
+
+
+    if(staffRoles.includes(profile.site_role)){
+
+        document.getElementById(
+            "staffBox"
+        ).style.display = "block";
+
+    }
+
+
+    // Update last active time
+    await supabaseClient
+        .from("profiles")
+        .update({
+            last_active_at:
+                new Date().toISOString()
+        })
+        .eq("id",profile.id);
 
 }
 
 
-/* ==============================
-   LOGOUT
-   ============================== */
+async function logout(){
 
-document
-    .getElementById("logout")
-    .addEventListener(
-        "click",
-        async function(event) {
+    await supabaseClient.auth.signOut();
 
-            event.preventDefault();
+    location.href = "index.html";
 
-            await supabaseClient.auth.signOut();
-
-            window.location.href =
-                "login.html";
-
-        }
-    );
+}
 
 
-/* ==============================
-   START
-   ============================== */
-
-loadUser();
+loadHome();
 
 </script>
 
