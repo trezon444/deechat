@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Group Activities - DeeChat</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{margin:0;background:#eaf6ff;font-family:Arial,sans-serif;font-size:14px;color:#222}
+a{color:#0645ad;text-decoration:none}
+.header{background:#075eaa;color:#fff;padding:10px;font-size:20px;font-weight:bold}
+.nav{background:#fff;border-bottom:1px solid #aaa;padding:7px;line-height:25px}
+.box{margin:8px;background:#fff;border:1px solid #aaa}
+.title{background:#ffd84d;border-bottom:1px solid #aaa;padding:7px;font-weight:bold}
+.content{padding:8px}
+input,textarea,button{width:100%;box-sizing:border-box;padding:8px;margin:4px 0;border:1px solid #999;font-size:14px}
+button{background:#075eaa;color:#fff;border:1px solid #034477;font-weight:bold}
+.activity{border-bottom:1px solid #ddd;padding:9px 3px}
+.activity:last-child{border-bottom:0}
+.meta{font-size:12px;color:#777}
+.reward{margin-top:5px;font-weight:bold}
+.error{color:#c00;font-weight:bold}
+.success{color:green;font-weight:bold}
+.hidden{display:none}
+.footer{text-align:center;padding:15px 5px;color:#777;font-size:12px}
+</style>
+</head>
+
+<body>
+
+<div class="header">🏆 DeeChat</div>
+
+<div class="nav">
+<a href="homepage.html">Home</a> |
+<a href="groups.html">Groups</a> |
+<a id="groupLink" href="#">Group</a> |
+<a id="manageLink" href="#">Manage</a>
+</div>
+
+<div id="loading" class="box">
+<div class="content">Loading...</div>
+</div>
+
+<div id="main" class="hidden">
+
+<div class="box">
+<div class="title">🏆 <span id="groupName">Group</span> Activities</div>
+<div class="content" id="groupInfo"></div>
+</div>
+
+<div id="createBox" class="box hidden">
+<div class="title">Create Activity</div>
+<div class="content">
+
+<input id="activityTitle" placeholder="Activity title">
+
+<textarea id="activityDescription"
+placeholder="Describe the activity..."></textarea>
+
+<input id="activityReward"
+type="number"
+min="0"
+placeholder="GC reward (optional)">
+
+<button onclick="createActivity()">
+Create Activity
+</button>
+
+<div id="createMsg"></div>
+
+</div>
+</div>
+
+<div class="box">
+<div class="title">Group Activities</div>
+<div class="content" id="activityList">
+Loading activities...
+</div>
+</div>
+
+</div>
+
+<div class="footer">
+©DaVeCrEaToR DeeChat 2026
+</div>
+
+<script>
+const SUPABASE_URL="https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY="sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient=
+window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
+
+const params=new URLSearchParams(location.search);
+const groupId=params.get("id");
+
+let currentUser=null;
+let group=null;
+let canManage=false;
+
+function esc(text){
+return String(text??"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+}
+
+async function start(){
+
+if(!groupId){
+location.href="groups.html";
+return;
+}
+
+const {data:{session}}=
+await supabaseClient.auth.getSession();
+
+if(!session){
+location.href="login.html";
+return;
+}
+
+currentUser=session.user;
+
+const {data,error}=
+await supabaseClient
+.from("groups")
+.select("*")
+.eq("id",groupId)
+.single();
+
+if(error||!data){
+document.getElementById("loading").innerHTML=
+'<div class="content error">Group not found.</div>';
+return;
+}
+
+group=data;
+
+document.getElementById("groupName").textContent=group.name;
+
+document.getElementById("groupInfo").textContent=
+group.description||"Take part in group activities and earn rewards.";
+
+document.getElementById("groupLink").href=
+"group.html?id="+encodeURIComponent(groupId);
+
+document.getElementById("manageLink").href=
+"group_panel.html?id="+encodeURIComponent(groupId);
+
+await checkManager();
+await loadActivities();
+
+document.getElementById("loading").classList.add("hidden");
+document.getElementById("main").classList.remove("hidden");
+}
+
+async function checkManager(){
+
+const {data:profile}=
+await supabaseClient
+.from("profiles")
+.select("site_role")
+.eq("id",currentUser.id)
+.single();
+
+if(profile &&
+["owner","super_admin","admin"].includes(profile.site_role)){
+canManage=true;
+}
+
+if(group.leader_id===currentUser.id){
+canManage=true;
+}
+
+const {data:member}=
+await supabaseClient
+.from("group_members")
+.select("is_co_leader")
+.eq("group_id",groupId)
+.eq("user_id",currentUser.id)
+.maybeSingle();
+
+if(member && member.is_co_leader){
+canManage=true;
+}
+
+if(canManage){
+document.getElementById("createBox")
+.classList.remove("hidden");
+}
+}
+
+async function loadActivities(){
+
+const list=document.getElementById("activityList");
+
+const {data,error}=
+await supabaseClient
+.from("group_activities")
+.select("*")
+.eq("group_id",groupId)
+.order("created_at",{ascending:false});
+
+if(error){
+
+if(error.message.toLowerCase().includes("group_activities")){
+list.innerHTML=
+'<div class="error">Group activities database table is not created yet.</div>';
+return;
+}
+
+list.innerHTML=
+'<div class="error">'+esc(error.message)+'</div>';
+return;
+}
+
+if(!data||data.length===0){
+list.innerHTML=
+"<div>No activities yet.</div>";
+return;
+}
+
+list.innerHTML=data.map(a=>`
+
+<div class="activity">
+
+<b>🏆 ${esc(a.title)}</b>
+
+<div class="meta">
+Created:
+${new Date(a.created_at).toLocaleString()}
+</div>
+
+<div style="margin-top:5px">
+${esc(a.description||"").replace(/\n/g,"<br>")}
+</div>
+
+${
+Number(a.gc_reward||0)>0
+?
+`<div class="reward">
+Reward: 🪙 ${Number(a.gc_reward).toLocaleString()} GC
+</div>`
+:""
+}
+
+<div class="meta" style="margin-top:6px">
+Participants:
+${Number(a.participant_count||0)}
+</div>
+
+<button
+onclick="joinActivity('${a.id}')">
+Join Activity
+</button>
+
+</div>
+
+`).join("");
+}
+
+async function createActivity(){
+
+if(!canManage)return;
+
+const title=
+document.getElementById("activityTitle").value.trim();
+
+const description=
+document.getElementById("activityDescription").value.trim();
+
+const reward=
+Number(document.getElementById("activityReward").value||0);
+
+const msg=document.getElementById("createMsg");
+
+if(!title){
+msg.innerHTML=
+'<p class="error">Enter an activity title.</p>';
+return;
+}
+
+const {error}=
+await supabaseClient
+.from("group_activities")
+.insert({
+group_id:groupId,
+created_by:currentUser.id,
+title,
+description,
+gc_reward:reward,
+participant_count:0
+});
+
+if(error){
+msg.innerHTML=
+'<p class="error">'+esc(error.message)+'</p>';
+return;
+}
+
+document.getElementById("activityTitle").value="";
+document.getElementById("activityDescription").value="";
+document.getElementById("activityReward").value="";
+
+msg.innerHTML=
+'<p class="success">Activity created.</p>';
+
+await loadActivities();
+}
+
+async function joinActivity(activityId){
+
+const {data:existing}=
+await supabaseClient
+.from("group_activity_members")
+.select("id")
+.eq("activity_id",activityId)
+.eq("user_id",currentUser.id)
+.maybeSingle();
+
+if(existing){
+alert("You already joined this activity.");
+return;
+}
+
+const {error}=
+await supabaseClient
+.from("group_activity_members")
+.insert({
+activity_id:activityId,
+user_id:currentUser.id
+});
+
+if(error){
+alert(error.message);
+return;
+}
+
+await supabaseClient
+.from("group_activities")
+.update({
+participant_count:
+undefined
+})
+.eq("id",activityId);
+
+alert("You joined the activity!");
+
+await loadActivities();
+}
+
+start();
+</script>
+
+</body>
+</html>
