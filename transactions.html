@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeeChat - Transactions</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{margin:0;background:#eaf6ff;font:14px Arial;color:#222}
+a{color:#0645ad;text-decoration:none}
+.header{background:#075985;color:#fff;padding:10px;font-size:20px;font-weight:bold}
+.nav{background:#dff3ff;border-bottom:1px solid #9ccfe8;padding:7px;line-height:1.8}
+.box{margin:8px;border:1px solid #9ccfe8;background:#fff}
+.title{background:#ffe66d;border-bottom:1px solid #d5bd28;padding:7px;font-weight:bold}
+.content{padding:8px}
+.balance{padding:10px;border-bottom:1px solid #ddd}
+.big{font-size:20px;font-weight:bold}
+.tx{padding:8px 2px;border-bottom:1px solid #ddd}
+.tx:last-child{border-bottom:0}
+.gc{color:#8a6500}
+.credit{color:#555}
+.plus{font-weight:bold}
+.minus{font-weight:bold}
+.small{font-size:12px;color:#666}
+#message{display:none;margin:8px;padding:7px;background:#fff7bf;border:1px solid #ddd16a}
+</style>
+</head>
+
+<body>
+
+<div class="header">DeeChat - Transactions</div>
+
+<div class="nav">
+<a href="homepage.html">Home</a> |
+<a href="currency.html">Currency</a> |
+<a href="currency_leaderboard.html">Leaderboard</a> |
+<a href="transactions.html">Transactions</a> |
+<a href="profile.html">Profile</a>
+</div>
+
+<div id="message"></div>
+
+<div class="box">
+<div class="title">My Balances</div>
+
+<div class="content">
+
+<div class="balance">
+🪙 Gold Coins:
+<br>
+<span id="gc" class="big">0</span> GC
+</div>
+
+<div class="balance">
+⭐ Credits:
+<br>
+<span id="credits" class="big">0</span> Credits
+</div>
+
+</div>
+</div>
+
+<div class="box">
+<div class="title">Transaction History</div>
+
+<div class="content">
+
+<div id="transactions">
+Loading transactions...
+</div>
+
+</div>
+</div>
+
+<script>
+const SUPABASE_URL=
+"https://sqikfejouaxizvidivcg.supabase.co";
+
+const SUPABASE_KEY=
+"sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient=
+window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
+
+let currentUser=null;
+
+function esc(v){
+return String(v??"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+}
+
+function formatDate(date){
+return new Date(date).toLocaleString();
+}
+
+async function loadAccount(){
+
+const {data:{user}}=
+await supabaseClient.auth.getUser();
+
+if(!user){
+location.href="login.html";
+return;
+}
+
+currentUser=user;
+
+const {data,error}=
+await supabaseClient
+.from("profiles")
+.select("gc,credits")
+.eq("id",user.id)
+.single();
+
+if(error){
+
+document.getElementById("transactions")
+.textContent=
+"Currency database setup is not complete yet.";
+
+return;
+}
+
+document.getElementById("gc").textContent=
+Number(data.gc||0).toLocaleString();
+
+document.getElementById("credits").textContent=
+Number(data.credits||0).toLocaleString();
+
+await loadTransactions();
+}
+
+async function loadTransactions(){
+
+const container=
+document.getElementById("transactions");
+
+/*
+The currency transaction tables will be created
+during the DeeChat currency database setup.
+*/
+
+const {data,error}=
+await supabaseClient
+.from("currency_transactions")
+.select(`
+id,
+currency,
+amount,
+transaction_type,
+reason,
+created_at
+`)
+.eq("user_id",currentUser.id)
+.order("created_at",{ascending:false})
+.limit(100);
+
+if(error){
+
+container.innerHTML=
+"<span class='small'>"+
+"No transaction history available yet. "+
+"Currency transaction database setup is pending."+
+"</span>";
+
+return;
+}
+
+if(!data||data.length===0){
+
+container.textContent=
+"No transactions yet.";
+
+return;
+}
+
+container.innerHTML="";
+
+data.forEach(tx=>{
+
+const div=
+document.createElement("div");
+
+div.className="tx";
+
+const amount=
+Number(tx.amount||0);
+
+const positive=amount>=0;
+
+const currencyName=
+tx.currency==="gc"
+? "🪙 GC"
+: "⭐ Credits";
+
+div.innerHTML=`
+
+<b class="${tx.currency==="gc"?"gc":"credit"}">
+${currencyName}
+</b>
+
+<br>
+
+<span class="${positive?"plus":"minus"}">
+${positive?"+":""}${amount.toLocaleString()}
+</span>
+
+<br>
+
+${esc(tx.reason||tx.transaction_type||"Currency transaction")}
+
+<br>
+
+<span class="small">
+${formatDate(tx.created_at)}
+</span>
+
+`;
+
+container.appendChild(div);
+});
+}
+
+loadAccount();
+</script>
+
+</body>
+</html>
