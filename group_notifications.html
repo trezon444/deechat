@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeeChat - Group Notifications</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{margin:0;background:#eef7ff;font-family:Arial,sans-serif;font-size:14px;color:#222}
+a{color:#0645ad;text-decoration:none}
+.header{background:#0066aa;color:white;padding:8px;font-size:20px;font-weight:bold}
+.nav{background:#ffe680;padding:7px;border-bottom:1px solid #ccc}
+.nav a{margin-right:10px}
+.box{margin:8px;border:1px solid #aaa;background:white}
+.title{background:#ffd84d;padding:6px;font-weight:bold}
+.content{padding:8px}
+.notice{background:#e8f5e9;border:1px solid #9ccc9c;padding:7px;margin-bottom:8px}
+.error{background:#ffe5e5;border:1px solid #cc7777;padding:7px;margin-bottom:8px}
+.notification{border-bottom:1px solid #ddd;padding:9px 4px}
+.notification:last-child{border-bottom:0}
+.unread{background:#fffbe0}
+.small{font-size:12px;color:#777}
+.btn{display:inline-block;background:#0066aa;color:white;border:0;padding:6px 9px;cursor:pointer}
+.btn2{display:inline-block;background:#eee;color:#0645ad;border:1px solid #aaa;padding:5px 8px;cursor:pointer}
+.footer{text-align:center;padding:15px;font-size:12px;color:#777}
+</style>
+</head>
+
+<body>
+
+<div class="header">DeeChat</div>
+
+<div class="nav">
+<a href="homepage.html">Home</a>
+<a href="groups.html">Groups</a>
+<a href="notifications.html">Notifications</a>
+<a href="profile.html">Profile</a>
+</div>
+
+<div class="box">
+<div class="title">Group Notifications</div>
+<div class="content">
+
+<div id="status"></div>
+
+<div id="groupInfo"></div>
+
+<div style="margin-bottom:8px;">
+<button class="btn2" onclick="markAllRead()">Mark All Read</button>
+</div>
+
+<div id="notifications">
+Loading notifications...
+</div>
+
+</div>
+</div>
+
+<div class="footer">
+©DaVeCrEaToR DeeChat 2026
+</div>
+
+<script>
+const SUPABASE_URL = "https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const params = new URLSearchParams(location.search);
+const groupId = params.get("group_id");
+
+let currentUser = null;
+
+function escapeHTML(value){
+    return String(value ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+function roleTag(role){
+    const tags = {
+        owner:"[OWNER]",
+        super_admin:"[SUPER ADMIN]",
+        admin:"[ADMIN]",
+        head_mod:"[HEAD MOD]",
+        moderator:"[MOD]",
+        vip:"[VIP]",
+        verified_member:"[VERIFIED]",
+        member:"[MEMBER]",
+        new_member:"[NEW]"
+    };
+    return tags[role] || "";
+}
+
+async function init(){
+
+    const {data:{session}} = await supabaseClient.auth.getSession();
+
+    if(!session){
+        location.href = "login.html";
+        return;
+    }
+
+    currentUser = session.user;
+
+    if(!groupId){
+        document.getElementById("status").innerHTML =
+            '<div class="error">No group selected.</div>';
+        document.getElementById("notifications").innerHTML = "";
+        return;
+    }
+
+    await loadGroup();
+    await loadNotifications();
+}
+
+async function loadGroup(){
+
+    const {data:group,error} = await supabaseClient
+        .from("groups")
+        .select("id,name,abbreviation,leader_id")
+        .eq("id",groupId)
+        .single();
+
+    if(error){
+        document.getElementById("groupInfo").innerHTML =
+            '<div class="error">Group could not be loaded.</div>';
+        return;
+    }
+
+    document.getElementById("groupInfo").innerHTML = `
+        <div class="notice">
+            <b>${escapeHTML(group.name)}</b>
+            ${group.abbreviation ? " ["+escapeHTML(group.abbreviation)+"]" : ""}
+            <br>
+            <span class="small">Group notifications</span>
+        </div>
+    `;
+}
+
+async function loadNotifications(){
+
+    const box = document.getElementById("notifications");
+
+    /*
+      This page supports a future dedicated group_notifications table.
+
+      Expected columns:
+      id
+      group_id
+      user_id
+      type
+      title
+      body
+      is_read
+      created_at
+    */
+
+    const {data,error} = await supabaseClient
+        .from("group_notifications")
+        .select("*")
+        .eq("group_id",groupId)
+        .eq("user_id",currentUser.id)
+        .order("created_at",{ascending:false})
+        .limit(50);
+
+    if(error){
+        box.innerHTML =
+            '<div class="error">Group notifications table is not created yet.</div>';
+        return;
+    }
+
+    if(!data || data.length === 0){
+        box.innerHTML = '<div>No group notifications yet.</div>';
+        return;
+    }
+
+    box.innerHTML = data.map(n => {
+
+        const unreadClass = n.is_read ? "" : "unread";
+
+        return `
+        <div class="notification ${unreadClass}">
+            <b>${escapeHTML(n.title || "Group Notification")}</b>
+            <br>
+            ${escapeHTML(n.body || "")}
+            <br>
+            <span class="small">${formatDate(n.created_at)}</span>
+            ${!n.is_read ? `
+                <br><br>
+                <button class="btn2" onclick="markRead('${n.id}')">
+                    Mark Read
+                </button>
+            ` : ""}
+        </div>
+        `;
+
+    }).join("");
+}
+
+async function markRead(id){
+
+    const {error} = await supabaseClient
+        .from("group_notifications")
+        .update({is_read:true})
+        .eq("id",id)
+        .eq("user_id",currentUser.id);
+
+    if(error){
+        alert("Could not mark notification as read.");
+        return;
+    }
+
+    loadNotifications();
+}
+
+async function markAllRead(){
+
+    const {error} = await supabaseClient
+        .from("group_notifications")
+        .update({is_read:true})
+        .eq("group_id",groupId)
+        .eq("user_id",currentUser.id);
+
+    if(error){
+        alert("Could not mark notifications as read.");
+        return;
+    }
+
+    loadNotifications();
+}
+
+function formatDate(date){
+    if(!date) return "";
+    return new Date(date).toLocaleString();
+}
+
+init();
+</script>
+
+</body>
+</html>
