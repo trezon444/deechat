@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeeChat - Staff Management</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{margin:0;background:#eaf6ff;font:14px Arial;color:#222}
+a{color:#0645ad;text-decoration:none}
+.header{background:#075985;color:#fff;padding:10px;font-size:20px;font-weight:bold}
+.nav{background:#dff3ff;border-bottom:1px solid #9ccfe8;padding:7px;line-height:1.8}
+.box{margin:8px;border:1px solid #9ccfe8;background:#fff}
+.title{background:#ffe66d;border-bottom:1px solid #d5bd28;padding:7px;font-weight:bold}
+.content{padding:8px}
+input,select{width:100%;box-sizing:border-box;padding:7px;margin:4px 0 8px;border:1px solid #aaa}
+button{padding:7px 10px;margin:2px;border:1px solid #777;background:#e7f4ff}
+button:hover{background:#d1ebff}
+.staff{padding:9px 2px;border-bottom:1px solid #ddd}
+.staff:last-child{border-bottom:0}
+.tag{display:inline-block;padding:2px 5px;border:1px solid #aaa;background:#eee;font-size:11px}
+.small{font-size:12px;color:#666}
+.danger{background:#ffdede;border-color:#d77}
+#message{display:none;margin:8px;padding:7px;background:#fff7bf;border:1px solid #ddd16a}
+</style>
+</head>
+
+<body>
+
+<div class="header">DeeChat - Staff Management</div>
+
+<div class="nav">
+<a href="admin.html">Admin</a> |
+<a href="admin_users.html">Users</a> |
+<a href="admin_reports.html">Reports</a> |
+<a href="admin_rooms.html">Rooms</a> |
+<a href="admin_groups.html">Groups</a> |
+<a href="admin_moderators.html">Staff</a> |
+<a href="homepage.html">Home</a>
+</div>
+
+<div id="message"></div>
+
+<div class="box">
+<div class="title">Add / Change Staff Rank</div>
+<div class="content">
+
+<select id="userSelect">
+<option value="">Select user</option>
+</select>
+
+<select id="roleSelect">
+<option value="new_member">NEW MEMBER</option>
+<option value="member">MEMBER</option>
+<option value="verified_member">VERIFIED MEMBER</option>
+<option value="vip">VIP</option>
+<option value="moderator">MODERATOR</option>
+<option value="head_mod">HEAD MOD</option>
+<option value="admin">ADMIN</option>
+<option value="super_admin">SUPER ADMIN</option>
+</select>
+
+<button onclick="changeRole()">Save Rank</button>
+
+<p class="small">
+OWNER is protected and cannot be assigned or removed from this page.
+</p>
+
+</div>
+</div>
+
+<div class="box">
+<div class="title">Current Staff & Ranks</div>
+<div class="content">
+<div id="staff">Loading...</div>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL="https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY="sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+let currentUser=null;
+let currentProfile=null;
+
+const staffRoles=[
+"owner",
+"super_admin",
+"admin",
+"head_mod",
+"moderator"
+];
+
+const editableRoles=[
+"new_member",
+"member",
+"verified_member",
+"vip",
+"moderator",
+"head_mod",
+"admin",
+"super_admin"
+];
+
+function esc(v){
+return String(v??"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+}
+
+function roleName(role){
+const names={
+owner:"👑 OWNER",
+super_admin:"🛡️ SUPER ADMIN",
+admin:"🔧 ADMIN",
+head_mod:"⚔️ HEAD MOD",
+moderator:"🛡️ MODERATOR",
+vip:"💎 VIP",
+verified_member:"✅ VERIFIED MEMBER",
+member:"👤 MEMBER",
+new_member:"🌱 NEW MEMBER"
+};
+return names[role]||role;
+}
+
+function showMessage(text){
+const box=document.getElementById("message");
+box.textContent=text;
+box.style.display="block";
+}
+
+async function checkAccess(){
+
+const {data:{user}}=
+await supabaseClient.auth.getUser();
+
+if(!user){
+location.href="login.html";
+return false;
+}
+
+currentUser=user;
+
+const {data,error}=
+await supabaseClient
+.from("profiles")
+.select("id,username,site_role")
+.eq("id",user.id)
+.single();
+
+if(error||!data){
+document.body.innerHTML=
+"<div style='padding:20px'>Unable to load account.</div>";
+return false;
+}
+
+currentProfile=data;
+
+if(!["owner","super_admin","admin"].includes(data.site_role)){
+document.body.innerHTML=
+"<div style='padding:20px;font-family:Arial'>"+
+"<b>Access denied.</b><br><br>"+
+"<a href='homepage.html'>Return to DeeChat</a>"+
+"</div>";
+return false;
+}
+
+return true;
+}
+
+async function loadUsers(){
+
+const {data,error}=
+await supabaseClient
+.from("profiles")
+.select("id,username,display_name,site_role,is_banned,is_suspended")
+.order("username");
+
+if(error){
+showMessage(error.message);
+return;
+}
+
+const select=document.getElementById("userSelect");
+
+data.forEach(user=>{
+
+const option=document.createElement("option");
+
+option.value=user.id;
+
+option.textContent=
+(user.display_name||user.username)+
+" @" + user.username+
+" - "+roleName(user.site_role);
+
+select.appendChild(option);
+});
+}
+
+async function changeRole(){
+
+const userId=
+document.getElementById("userSelect").value;
+
+const role=
+document.getElementById("roleSelect").value;
+
+if(!userId){
+alert("Select a user.");
+return;
+}
+
+const selectedUser=
+await supabaseClient
+.from("profiles")
+.select("id,username,site_role")
+.eq("id",userId)
+.single();
+
+if(selectedUser.error){
+alert(selectedUser.error.message);
+return;
+}
+
+if(selectedUser.data.site_role==="owner"){
+alert("The OWNER rank is protected.");
+return;
+}
+
+if(role==="owner"){
+alert("OWNER cannot be assigned here.");
+return;
+}
+
+const {error}=
+await supabaseClient
+.from("profiles")
+.update({
+site_role:role
+})
+.eq("id",userId);
+
+if(error){
+alert(error.message);
+return;
+}
+
+showMessage(
+"@" + selectedUser.data.username+
+" is now "+roleName(role)+"."
+);
+
+loadStaff();
+}
+
+async function loadStaff(){
+
+const container=document.getElementById("staff");
+
+const {data,error}=
+await supabaseClient
+.from("profiles")
+.select(`
+id,
+username,
+display_name,
+site_role,
+is_verified,
+is_banned,
+is_suspended
+`)
+.in("site_role",staffRoles)
+.order("site_role");
+
+if(error){
+container.textContent=error.message;
+return;
+}
+
+if(!data.length){
+container.textContent="No staff members found.";
+return;
+}
+
+container.innerHTML="";
+
+data.forEach(user=>{
+
+const div=document.createElement("div");
+div.className="staff";
+
+let status="Active";
+
+if(user.is_banned) status="BANNED";
+else if(user.is_suspended) status="SUSPENDED";
+
+div.innerHTML=`
+<b>${esc(user.display_name||user.username)}</b>
+<br>
+
+<a href="profile.html?id=${user.id}">
+@${esc(user.username)}
+</a>
+
+<br><br>
+
+<span class="tag">
+${esc(roleName(user.site_role))}
+</span>
+
+<br><br>
+
+<span class="small">
+Status: ${esc(status)}
+</span>
+
+<br><br>
+
+<a href="profile.html?id=${user.id}">
+View Profile
+</a>
+
+`;
+
+container.appendChild(div);
+});
+}
+
+async function start(){
+
+const allowed=await checkAccess();
+
+if(!allowed)return;
+
+await loadUsers();
+await loadStaff();
+}
+
+start();
+</script>
+
+</body>
+</html>
