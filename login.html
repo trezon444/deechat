@@ -1,290 +1,98 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Login - DeeChat</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeeChat - Login</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    background: #eaf4ff;
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    color: #333;
-}
-
-.header {
-    background: #1769aa;
-    color: white;
-    padding: 12px;
-    font-size: 20px;
-    font-weight: bold;
-}
-
-.box {
-    margin: 10px;
-    border: 1px solid #b7cde2;
-    background: white;
-}
-
-.title {
-    background: #ffe45c;
-    padding: 8px;
-    font-weight: bold;
-}
-
-.content {
-    padding: 10px;
-}
-
-label {
-    display: block;
-    margin-top: 9px;
-    font-weight: bold;
-}
-
-input {
-    width: 100%;
-    padding: 9px;
-    margin-top: 4px;
-    border: 1px solid #aaa;
-    font-size: 14px;
-}
-
-button {
-    width: 100%;
-    margin-top: 12px;
-    padding: 10px;
-    border: 0;
-    background: #1769aa;
-    color: white;
-    font-weight: bold;
-    font-size: 15px;
-}
-
-button:disabled {
-    background: #888;
-}
-
-.message {
-    display: none;
-    margin-top: 10px;
-    padding: 8px;
-}
-
-.success {
-    background: #d9f7d9;
-    border: 1px solid #8ac98a;
-}
-
-.error {
-    background: #ffdede;
-    border: 1px solid #e09090;
-}
-
-.links {
-    padding: 10px;
-    text-align: center;
-}
-
-a {
-    color: #075aaa;
-    text-decoration: none;
-}
+body{margin:0;background:#eaf4ff;font-family:Arial;font-size:14px}
+.header{background:#1976d2;color:white;text-align:center;padding:12px;font-size:21px;font-weight:bold}
+.box{margin:10px 8px;background:white;border:1px solid #aaa}
+.title{background:#ffe680;padding:8px;font-weight:bold;border-bottom:1px solid #d4b900}
+.content{padding:9px}
+label{display:block;font-weight:bold;margin-top:8px}
+input{width:100%;box-sizing:border-box;padding:9px;margin-top:4px;border:1px solid #aaa}
+button{background:#1976d2;color:white;border:0;padding:9px 15px;margin-top:12px}
+a{color:#0645ad;text-decoration:none}
+.msg{display:none;background:#ffe5e5;color:#a00000;padding:8px;margin-bottom:8px}
 </style>
 </head>
 
 <body>
 
-<div class="header">
-    DeeChat
-</div>
+<div class="header">💬 DeeChat</div>
 
 <div class="box">
+<div class="title">🔐 Login</div>
 
-    <div class="title">
-        Member Login
-    </div>
+<div class="content">
 
-    <div class="content">
+<div id="msg" class="msg"></div>
 
-        <form id="loginForm">
+<label>Email</label>
+<input id="email" type="email">
 
-            <label for="email">Email</label>
+<label>Password</label>
+<input id="password" type="password">
 
-            <input
-                type="email"
-                id="email"
-                required
-                placeholder="Your email"
-            >
+<button onclick="login()">🔑 Login</button>
 
-            <label for="password">Password</label>
+<br><br>
 
-            <input
-                type="password"
-                id="password"
-                required
-                placeholder="Your password"
-            >
+<a href="register.html">📝 Create Account</a>
 
-            <button
-                type="submit"
-                id="loginButton"
-            >
-                Login
-            </button>
+<br><br>
 
-        </form>
+<a href="index.html">🏠 Back to DeeChat</a>
 
-        <div id="message" class="message"></div>
-
-    </div>
 </div>
-
-<div class="links">
-    <a href="#">Forgot password?</a>
 </div>
-
-<div class="links">
-    Don't have an account?
-    <a href="register.html">Register</a>
-</div>
-
-<div class="links">
-    <a href="index.html">← Back to DeeChat</a>
-</div>
-
 
 <script>
-
-/* ==============================
-   DEECHAT SUPABASE
-   ============================== */
-
 const SUPABASE_URL =
-    "https://sqikfejouaxizvidivcg.supabase.co";
+"https://sqikfejouaxizvidivcg.supabase.co";
 
 const SUPABASE_KEY =
-    "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+"sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
 
 const supabaseClient =
-    window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_KEY
-    );
+window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
 
-
-/* ==============================
-   ELEMENTS
-   ============================== */
-
-const form =
-    document.getElementById("loginForm");
-
-const button =
-    document.getElementById("loginButton");
-
-const message =
-    document.getElementById("message");
-
-
-/* ==============================
-   MESSAGE
-   ============================== */
-
-function showMessage(text, type) {
-
-    message.textContent = text;
-
-    message.className =
-        "message " + type;
-
-    message.style.display = "block";
+function showError(text){
+const msg=document.getElementById("msg");
+msg.textContent=text;
+msg.style.display="block";
 }
 
+async function login(){
 
-/* ==============================
-   LOGIN
-   ============================== */
+const email=document.getElementById("email").value.trim();
+const password=document.getElementById("password").value;
 
-form.addEventListener("submit", async function(event) {
+if(!email || !password){
+showError("Enter your email and password.");
+return;
+}
 
-    event.preventDefault();
-
-    const email =
-        document.getElementById("email")
-        .value
-        .trim();
-
-    const password =
-        document.getElementById("password")
-        .value;
-
-
-    button.disabled = true;
-
-    button.textContent =
-        "Logging in...";
-
-
-    const { data, error } =
-        await supabaseClient.auth.signInWithPassword({
-
-            email: email,
-
-            password: password
-
-        });
-
-
-    /* LOGIN ERROR */
-
-    if (error) {
-
-        showMessage(
-            error.message,
-            "error"
-        );
-
-        button.disabled = false;
-
-        button.textContent =
-            "Login";
-
-        return;
-    }
-
-
-    /* LOGIN SUCCESS */
-
-    if (data.session) {
-
-        showMessage(
-            "Login successful! Opening DeeChat...",
-            "success"
-        );
-
-
-        setTimeout(function() {
-
-            window.location.href =
-                "homepage.html";
-
-        }, 700);
-
-    }
-
+const {data,error}=await supabaseClient.auth.signInWithPassword({
+email:email,
+password:password
 });
 
+if(error){
+showError(error.message);
+return;
+}
+
+if(data.session){
+location.href="homepage.html";
+}
+
+}
 </script>
 
 </body>
