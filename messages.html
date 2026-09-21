@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Private Messages - DeeChat</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    margin:0;
+    background:#eaf7ff;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+    color:#222;
+}
+a{color:#0645ad;text-decoration:none}
+.header{
+    background:#1683c7;
+    color:white;
+    padding:10px;
+    font-size:20px;
+    font-weight:bold;
+}
+.nav{
+    background:#d8efff;
+    padding:7px;
+    line-height:25px;
+    border-bottom:1px solid #9acbe8;
+}
+.box{
+    margin:8px;
+    border:1px solid #b5cddd;
+    background:white;
+}
+.title{
+    background:#ffd83d;
+    padding:7px;
+    font-weight:bold;
+}
+.content{padding:8px}
+.user{
+    border-bottom:1px solid #ddd;
+    padding:8px 2px;
+}
+.user:last-child{border-bottom:0}
+.avatar{
+    width:35px;
+    height:35px;
+    border-radius:50%;
+    background:#ddd;
+    vertical-align:middle;
+    margin-right:6px;
+    object-fit:cover;
+}
+.role{
+    display:inline-block;
+    padding:1px 4px;
+    font-size:10px;
+    border:1px solid #ccc;
+}
+.owner{
+    background:#ffd700;
+    border-color:#c5a900;
+}
+.staff{
+    background:#cceeff;
+    color:#005580;
+}
+.verified{
+    color:#008000;
+}
+.meta{
+    color:#777;
+    font-size:11px;
+}
+.chat-message{
+    padding:7px;
+    border-bottom:1px solid #ddd;
+}
+.chat-message:last-child{border-bottom:0}
+.mine{
+    background:#eefaff;
+}
+.message-body{
+    margin-top:4px;
+    white-space:pre-wrap;
+}
+textarea{
+    width:100%;
+    box-sizing:border-box;
+    min-height:65px;
+    padding:7px;
+    border:1px solid #aaa;
+}
+button{
+    background:#1683c7;
+    color:white;
+    border:0;
+    padding:7px 12px;
+    margin-top:5px;
+}
+button:disabled{
+    background:#999;
+}
+.small{
+    color:#777;
+    font-size:12px;
+}
+.error{
+    color:#b00000;
+    padding:7px;
+}
+.success{
+    color:#008000;
+    padding:7px;
+}
+.footer{
+    text-align:center;
+    padding:15px 8px;
+    color:#777;
+    font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">✉️ DeeChat Messages</div>
+
+<div class="nav">
+<a href="homepage.html">Home</a> |
+<a href="shouts.html">Shouts</a> |
+<a href="topics.html">Topics</a> |
+<a href="members.html">Members</a> |
+<a href="groups.html">Groups</a>
+</div>
+
+<div id="message"></div>
+
+<div class="box">
+
+<div class="title">Members</div>
+
+<div class="content" id="members">
+Loading members...
+</div>
+
+</div>
+
+
+<div class="box">
+
+<div class="title" id="chatTitle">
+Private Messages
+</div>
+
+<div class="content">
+
+<div id="conversation">
+Select a member to start messaging.
+</div>
+
+</div>
+
+</div>
+
+
+<div class="box">
+
+<div class="title">Send Private Message</div>
+
+<div class="content">
+
+<textarea
+id="messageInput"
+placeholder="Write a private message..."
+disabled
+></textarea>
+
+<br>
+
+<button
+id="sendBtn"
+disabled
+>
+Send Message
+</button>
+
+</div>
+
+</div>
+
+
+<div class="footer">
+© 2026 DeeChat
+</div>
+
+
+<script>
+
+const SUPABASE_URL =
+"https://sqikfejouaxizvidivcg.supabase.co";
+
+const SUPABASE_KEY =
+"sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
+
+let currentUser=null;
+let selectedUser=null;
+let members=[];
+
+
+/* ESCAPE */
+
+function escapeHTML(value){
+
+return String(value ?? "")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+
+}
+
+
+/* ROLE */
+
+function roleTag(profile){
+
+if(!profile) return "";
+
+const role=profile.site_role;
+
+if(role==="owner")
+return `<span class="role owner">OWNER</span>`;
+
+if(role==="super_admin")
+return `<span class="role staff">SUPER ADMIN</span>`;
+
+if(role==="admin")
+return `<span class="role staff">ADMIN</span>`;
+
+if(role==="head_mod")
+return `<span class="role staff">HEAD MOD</span>`;
+
+if(role==="moderator")
+return `<span class="role staff">MOD</span>`;
+
+if(role==="vip")
+return `<span class="role staff">VIP</span>`;
+
+if(role==="verified_member")
+return `<span class="role staff">VERIFIED</span>`;
+
+return "";
+
+}
+
+
+/* LOGIN */
+
+async function checkLogin(){
+
+const {data,error} =
+await supabaseClient.auth.getSession();
+
+if(error || !data.session){
+
+window.location.href="login.html";
+
+return false;
+
+}
+
+currentUser=data.session.user;
+
+return true;
+
+}
+
+
+/* LOAD MEMBERS */
+
+async function loadMembers(){
+
+const {data,error} =
+await supabaseClient
+.from("profiles")
+.select(`
+id,
+username,
+display_name,
+avatar_url,
+site_role,
+is_verified,
+is_banned
+`)
+.eq("is_banned",false)
+.order("username",{ascending:true});
+
+
+if(error){
+
+document.getElementById("members")
+.innerHTML=
+`<div class="error">
+Could not load members.
+</div>`;
+
+return;
+
+}
+
+members=data || [];
+
+renderMembers();
+
+}
+
+
+/* RENDER MEMBERS */
+
+function renderMembers(){
+
+const container=
+document.getElementById("members");
+
+const otherMembers=
+members.filter(
+member=>member.id!==currentUser.id
+);
+
+
+if(!otherMembers.length){
+
+container.innerHTML=
+`<div class="small">
+No other members yet.
+</div>`;
+
+return;
+
+}
+
+
+container.innerHTML=
+otherMembers.map(member=>{
+
+const verified=
+member.is_verified
+?`<span class="verified">✔</span>`
+:"";
+
+const avatar=
+member.avatar_url
+?
+`<img
+class="avatar"
+src="${escapeHTML(member.avatar_url)}"
+>`
+:
+`<span class="avatar"
+style="display:inline-block;">
+👤
+</span>`;
+
+
+return `
+
+<div class="user">
+
+${avatar}
+
+<a
+href="#"
+onclick="selectUser('${member.id}');return false;"
+>
+<b>
+${escapeHTML(
+member.display_name ||
+member.username ||
+"Member"
+)}
+</b>
+</a>
+
+${roleTag(member)}
+${verified}
+
+<div class="meta">
+@${escapeHTML(member.username || "")}
+</div>
+
+</div>
+
+`;
+
+}).join("");
+
+}
+
+
+/* SELECT USER */
+
+async function selectUser(userId){
+
+selectedUser=
+members.find(
+member=>member.id===userId
+);
+
+if(!selectedUser) return;
+
+
+document.getElementById("chatTitle")
+.innerText=
+"Message "+
+(
+selectedUser.display_name ||
+selectedUser.username ||
+"Member"
+);
+
+
+document.getElementById("messageInput")
+.disabled=false;
+
+document.getElementById("sendBtn")
+.disabled=false;
+
+
+await loadConversation();
+
+}
+
+
+/* LOAD CONVERSATION */
+
+async function loadConversation(){
+
+if(!selectedUser) return;
+
+
+document.getElementById("conversation")
+.innerHTML=
+"Loading messages...";
+
+
+const {data,error} =
+await supabaseClient
+.from("private_messages")
+.select(`
+id,
+sender_id,
+recipient_id,
+body,
+is_read,
+created_at
+`)
+.or(
+`and(sender_id.eq.${currentUser.id},recipient_id.eq.${selectedUser.id}),and(sender_id.eq.${selectedUser.id},recipient_id.eq.${currentUser.id})`
+)
+.order("created_at",{ascending:true});
+
+
+if(error){
+
+document.getElementById("conversation")
+.innerHTML=
+`<div class="error">
+Could not load messages.
+</div>`;
+
+console.error(error);
+
+return;
+
+}
+
+
+if(!data || data.length===0){
+
+document.getElementById("conversation")
+.innerHTML=
+`<div class="small">
+No messages yet. Start the conversation.
+</div>`;
+
+return;
+
+}
+
+
+document.getElementById("conversation")
+.innerHTML=
+data.map(msg=>{
+
+const mine=
+msg.sender_id===currentUser.id;
+
+return `
+
+<div class="chat-message ${mine?"mine":""}">
+
+<div class="meta">
+
+${mine?"You":escapeHTML(
+selectedUser.display_name ||
+selectedUser.username ||
+"Member"
+)}
+
+<br>
+
+${new Date(
+msg.created_at
+).toLocaleString()}
+
+</div>
+
+<div class="message-body">
+${escapeHTML(msg.body)}
+</div>
+
+</div>
+
+`;
+
+}).join("");
+
+
+/* Mark received messages as read */
+
+await supabaseClient
+.from("private_messages")
+.update({is_read:true})
+.eq("sender_id",selectedUser.id)
+.eq("recipient_id",currentUser.id)
+.eq("is_read",false);
+
+}
+
+
+/* SEND MESSAGE */
+
+document.getElementById("sendBtn")
+.addEventListener(
+"click",
+sendPrivateMessage
+);
+
+
+document.getElementById("messageInput")
+.addEventListener(
+"keydown",
+function(event){
+
+if(
+event.key==="Enter" &&
+!event.shiftKey
+){
+
+event.preventDefault();
+
+sendPrivateMessage();
+
+}
+
+});
+
+
+async function sendPrivateMessage(){
+
+if(!currentUser || !selectedUser)
+return;
+
+
+const input=
+document.getElementById("messageInput");
+
+const body=
+input.value.trim();
+
+
+if(!body){
+
+document.getElementById("message")
+.innerHTML=
+`<div class="error">
+Write a message first.
+</div>`;
+
+return;
+
+}
+
+
+const button=
+document.getElementById("sendBtn");
+
+button.disabled=true;
+
+button.innerText="Sending...";
+
+
+const {error} =
+await supabaseClient
+.from("private_messages")
+.insert({
+
+sender_id:currentUser.id,
+
+recipient_id:selectedUser.id,
+
+body:body
+
+});
+
+
+if(error){
+
+document.getElementById("message")
+.innerHTML=
+`<div class="error">
+${escapeHTML(error.message)}
+</div>`;
+
+button.disabled=false;
+
+button.innerText="Send Message";
+
+return;
+
+}
+
+
+input.value="";
+
+button.disabled=false;
+
+button.innerText="Send Message";
+
+
+await loadConversation();
+
+}
+
+
+/* OPEN USER FROM PROFILE LINK */
+
+function openFromURL(){
+
+const params=
+new URLSearchParams(
+window.location.search
+);
+
+const userId=
+params.get("user");
+
+
+if(userId){
+
+selectUser(userId);
+
+}
+
+}
+
+
+/* START */
+
+(async function(){
+
+const loggedIn=
+await checkLogin();
+
+if(!loggedIn) return;
+
+await loadMembers();
+
+openFromURL();
+
+})();
+
+</script>
+
+</body>
+</html>
