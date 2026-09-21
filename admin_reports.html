@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeeChat - Admin Reports</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{margin:0;background:#eef7ff;font-family:Arial,sans-serif;font-size:14px;color:#222}
+a{color:#0645ad;text-decoration:none}
+.header{background:#0066aa;color:#fff;padding:8px;font-size:20px;font-weight:bold}
+.nav{background:#ffe680;padding:7px}
+.nav a{margin-right:9px}
+.box{margin:8px;border:1px solid #aaa;background:#fff}
+.title{background:#ffd84d;padding:6px;font-weight:bold}
+.content{padding:8px}
+select,textarea{width:100%;box-sizing:border-box;padding:7px;margin:4px 0 8px;border:1px solid #aaa}
+textarea{min-height:60px}
+button{padding:6px 9px;border:1px solid #888;cursor:pointer}
+.primary{background:#0066aa;color:#fff}
+.good{background:#5cb85c;color:#fff}
+.danger{background:#d9534f;color:#fff}
+.report{border-bottom:1px solid #ddd;padding:10px 3px}
+.report:last-child{border-bottom:0}
+.badge{display:inline-block;padding:2px 5px;border:1px solid #aaa;font-size:11px}
+.pending{background:#fff0b3}
+.reviewing{background:#d9edf7}
+.resolved{background:#dff0d8}
+.dismissed{background:#eee}
+.notice{background:#e8f5e9;border:1px solid #9ccc9c;padding:7px;margin-bottom:8px}
+.error{background:#ffe5e5;border:1px solid #cc7777;padding:7px;margin-bottom:8px}
+.small{font-size:12px;color:#777}
+.footer{text-align:center;padding:15px;color:#777;font-size:12px}
+</style>
+</head>
+
+<body>
+
+<div class="header">DeeChat Admin</div>
+
+<div class="nav">
+<a href="admin.html">Dashboard</a>
+<a href="admin_users.html">Users</a>
+<a href="admin_reports.html">Reports</a>
+<a href="admin_rooms.html">Rooms</a>
+<a href="admin_groups.html">Groups</a>
+<a href="admin_moderators.html">Staff</a>
+</div>
+
+<div class="box">
+<div class="title">Reports & Moderation</div>
+
+<div class="content">
+
+<div id="status"></div>
+
+<select id="filter" onchange="loadReports()">
+<option value="all">All Reports</option>
+<option value="pending">Pending</option>
+<option value="reviewing">Reviewing</option>
+<option value="resolved">Resolved</option>
+<option value="dismissed">Dismissed</option>
+</select>
+
+<div id="reports">Loading reports...</div>
+
+</div>
+</div>
+
+<div class="footer">
+©DaVeCrEaToR DeeChat 2026
+</div>
+
+<script>
+const SUPABASE_URL="https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY="sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient=window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+const staffRoles=[
+    "owner",
+    "super_admin",
+    "admin",
+    "head_mod",
+    "moderator"
+];
+
+let currentUser=null;
+let currentProfile=null;
+
+function escapeHTML(value){
+    return String(value ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
+
+function formatDate(date){
+    if(!date) return "Unknown";
+    return new Date(date).toLocaleString();
+}
+
+function showStatus(message,error=false){
+    document.getElementById("status").innerHTML=
+        `<div class="${error?"error":"notice"}">
+        ${escapeHTML(message)}
+        </div>`;
+}
+
+async function init(){
+
+    const {data:{session}}=
+        await supabaseClient.auth.getSession();
+
+    if(!session){
+        location.href="login.html";
+        return;
+    }
+
+    currentUser=session.user;
+
+    const {data:profile,error}=await supabaseClient
+        .from("profiles")
+        .select("id,username,site_role")
+        .eq("id",currentUser.id)
+        .single();
+
+    if(error || !profile ||
+       !staffRoles.includes(profile.site_role)){
+
+        document.getElementById("status").innerHTML=
+            '<div class="error">Access denied. Staff only.</div>';
+
+        document.getElementById("reports").innerHTML="";
+        return;
+    }
+
+    currentProfile=profile;
+
+    loadReports();
+}
+
+async function loadReports(){
+
+    const box=document.getElementById("reports");
+    const filter=document.getElementById("filter").value;
+
+    box.innerHTML="Loading...";
+
+    let query=supabaseClient
+        .from("reports")
+        .select(`
+            id,
+            reporter_id,
+            target_user_id,
+            target_type,
+            target_id,
+            reason,
+            status,
+            action_taken,
+            reviewed_by,
+            created_at,
+            resolved_at
+        `)
+        .order("created_at",{ascending:false})
+        .limit(100);
+
+    if(filter!=="all"){
+        query=query.eq("status",filter);
+    }
+
+    const {data,error}=await query;
+
+    if(error){
+        box.innerHTML=
+            '<div class="error">Could not load reports.</div>';
+        return;
+    }
+
+    if(!data || data.length===0){
+        box.innerHTML="<div>No reports found.</div>";
+        return;
+    }
+
+    box.innerHTML=data.map(report=>{
+
+        const status=
+            report.status || "pending";
+
+        return `
+        <div class="report">
+
+            <b>${escapeHTML(
+                (report.target_type || "Report")
+                .toUpperCase()
+            )}</b>
+
+            <span class="badge ${status}">
+                ${escapeHTML(status)}
+            </span>
+
+            <br><br>
+
+            <b>Target ID:</b>
+            ${escapeHTML(report.target_id || "N/A")}
+
+            <br><br>
+
+            <b>Reason:</b><br>
+            ${escapeHTML(report.reason || "No reason supplied")}
+
+            <br><br>
+
+            <span class="small">
+                Reported:
+                ${formatDate(report.created_at)}
+            </span>
+
+            ${
+                report.action_taken
+                ? `<br>
+                   <span class="small">
+                   Action:
+                   ${escapeHTML(report.action_taken)}
+                   </span>`
+                : ""
+            }
+
+            <br><br>
+
+            ${
+                status==="pending"
+                ? `
+                <button class="primary"
+                    onclick="changeStatus('${report.id}','reviewing')">
+                    Review
+                </button>
+                `
+                : ""
+            }
+
+            ${
+                status!=="resolved"
+                ? `
+                <button class="good"
+                    onclick="resolveReport('${report.id}')">
+                    Resolve
+                </button>
+                `
+                : ""
+            }
+
+            ${
+                status!=="dismissed"
+                ? `
+                <button
+                    onclick="changeStatus('${report.id}','dismissed')">
+                    Dismiss
+                </button>
+                `
+                : ""
+            }
+
+            ${
+                report.target_user_id
+                ? `
+                <br><br>
+                <a href="profile.html?id=${report.target_user_id}">
+                    View Reported User
+                </a>
+                `
+                : ""
+            }
+
+        </div>
+        `;
+
+    }).join("");
+}
+
+async function changeStatus(id,status){
+
+    const {error}=await supabaseClient
+        .from("reports")
+        .update({
+            status:status,
+            reviewed_by:currentUser.id,
+            resolved_at:
+                status==="dismissed"
+                ? new Date().toISOString()
+                : null
+        })
+        .eq("id",id);
+
+    if(error){
+        showStatus(
+            "Could not update report: "+error.message,
+            true
+        );
+        return;
+    }
+
+    showStatus("Report updated.");
+    loadReports();
+}
+
+async function resolveReport(id){
+
+    const action=prompt(
+        "Enter moderation action taken:",
+        "Reviewed and action completed"
+    );
+
+    if(action===null) return;
+
+    const {error}=await supabaseClient
+        .from("reports")
+        .update({
+            status:"resolved",
+            action_taken:action,
+            reviewed_by:currentUser.id,
+            resolved_at:new Date().toISOString()
+        })
+        .eq("id",id);
+
+    if(error){
+        showStatus(
+            "Could not resolve report: "+error.message,
+            true
+        );
+        return;
+    }
+
+    showStatus("Report resolved.");
+    loadReports();
+}
+
+init();
+</script>
+
+</body>
+</html>
