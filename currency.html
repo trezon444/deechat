@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeeChat - GC & Credits</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{margin:0;background:#eaf6ff;font:14px Arial;color:#222}
+a{color:#0645ad;text-decoration:none}
+.header{background:#075985;color:#fff;padding:10px;font-size:20px;font-weight:bold}
+.nav{background:#dff3ff;border-bottom:1px solid #9ccfe8;padding:7px;line-height:1.8}
+.box{margin:8px;border:1px solid #9ccfe8;background:#fff}
+.title{background:#ffe66d;border-bottom:1px solid #d5bd28;padding:7px;font-weight:bold}
+.content{padding:8px}
+.coin{padding:12px;margin:5px 0;border:1px solid #ddd;background:#fafafa}
+.big{font-size:22px;font-weight:bold}
+.small{font-size:12px;color:#666}
+button{padding:7px 10px;margin:3px;border:1px solid #777;background:#e7f4ff}
+button:hover{background:#d1ebff}
+#message{display:none;margin:8px;padding:7px;background:#fff7bf;border:1px solid #ddd16a}
+</style>
+</head>
+
+<body>
+
+<div class="header">DeeChat - GC & Credits</div>
+
+<div class="nav">
+<a href="homepage.html">Home</a> |
+<a href="profile.html">Profile</a> |
+<a href="currency.html">Currency</a> |
+<a href="currency_leaderboard.html">Leaderboard</a> |
+<a href="transactions.html">Transactions</a> |
+<a href="chat.html">Chat</a>
+</div>
+
+<div id="message"></div>
+
+<div class="box">
+<div class="title">My DeeChat Currency</div>
+
+<div class="content">
+
+<div class="coin">
+🪙 <b>Gold Coins (GC)</b>
+<br><br>
+<span id="gc" class="big">0</span> GC
+<br>
+<span class="small">
+Earn GC through activities, rewards, likes, achievements,
+competitions and other DeeChat events.
+</span>
+</div>
+
+<div class="coin">
+⭐ <b>Credits</b>
+<br><br>
+<span id="credits" class="big">0</span> Credits
+<br>
+<span class="small">
+Credits are used mainly for multiplayer chatroom games
+and other special DeeChat features.
+</span>
+</div>
+
+</div>
+</div>
+
+<div class="box">
+<div class="title">Currency Rules</div>
+<div class="content">
+
+<b>🪙 Gold Coins</b>
+
+<ul>
+<li>Daily login rewards</li>
+<li>Member of the Day rewards</li>
+<li>Useful topics</li>
+<li>Shout/topic likes</li>
+<li>Replies and community activities</li>
+<li>Group activities</li>
+<li>Competitions</li>
+<li>Achievements and badges</li>
+<li>Weekly/monthly rewards</li>
+<li>Sending GC to other members</li>
+</ul>
+
+<b>⭐ Credits</b>
+
+<ul>
+<li>Multiplayer chatroom games</li>
+<li>Special profile effects</li>
+<li>Name decorations</li>
+<li>Other special features controlled by DeeChat</li>
+</ul>
+
+<p class="small">
+GC and Credits are virtual DeeChat currencies only.
+They have no cash value and cannot be withdrawn as money.
+</p>
+
+</div>
+</div>
+
+<div class="box">
+<div class="title">Quick Links</div>
+<div class="content">
+<a href="currency_leaderboard.html">🏆 Currency Leaderboard</a><br><br>
+<a href="transactions.html">📜 My Transactions</a><br><br>
+<a href="chat.html">💬 Chatroom Games</a><br><br>
+<a href="profile.html">👤 My Profile</a>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL="https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY="sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient=
+window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
+
+function showMessage(text){
+const box=document.getElementById("message");
+box.textContent=text;
+box.style.display="block";
+}
+
+async function loadCurrency(){
+
+const {data:{user}}=
+await supabaseClient.auth.getUser();
+
+if(!user){
+location.href="login.html";
+return;
+}
+
+const {data,error}=
+await supabaseClient
+.from("profiles")
+.select("gc,credits")
+.eq("id",user.id)
+.single();
+
+if(error){
+
+/*
+GC and Credits columns will be added
+to the database during the currency setup.
+*/
+document.getElementById("gc").textContent="0";
+document.getElementById("credits").textContent="0";
+
+showMessage(
+"Currency database setup is not complete yet."
+);
+
+return;
+}
+
+document.getElementById("gc").textContent=
+Number(data.gc||0).toLocaleString();
+
+document.getElementById("credits").textContent=
+Number(data.credits||0).toLocaleString();
+}
+
+loadCurrency();
+</script>
+
+</body>
+</html>
