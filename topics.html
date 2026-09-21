@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>DeeChat - Topics</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #eaf4ff;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: #333;
+}
+
+.header {
+    background: #1769aa;
+    color: white;
+    padding: 10px;
+}
+
+.logo {
+    font-size: 21px;
+    font-weight: bold;
+}
+
+.nav {
+    background: white;
+    border-bottom: 1px solid #b7cde2;
+    padding: 7px;
+    line-height: 1.8;
+}
+
+.nav a {
+    color: #075aaa;
+    text-decoration: none;
+    margin-right: 8px;
+}
+
+.box {
+    margin: 8px;
+    background: white;
+    border: 1px solid #b7cde2;
+}
+
+.title {
+    background: #ffe45c;
+    padding: 7px;
+    font-weight: bold;
+}
+
+.content {
+    padding: 8px;
+}
+
+input,
+textarea,
+select {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 7px;
+    border: 1px solid #aaa;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+}
+
+textarea {
+    height: 90px;
+    resize: vertical;
+}
+
+button {
+    background: #1769aa;
+    color: white;
+    border: 0;
+    padding: 7px 12px;
+    font-weight: bold;
+}
+
+.topic {
+    border-bottom: 1px solid #ddd;
+    padding: 9px 0;
+}
+
+.topic:last-child {
+    border-bottom: 0;
+}
+
+.topic-title {
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.topic-title a {
+    color: #075aaa;
+    text-decoration: none;
+}
+
+.meta {
+    color: #777;
+    font-size: 11px;
+    margin-top: 4px;
+}
+
+.stats {
+    margin-top: 5px;
+    color: #1769aa;
+}
+
+.error {
+    color: #b00000;
+}
+
+.success {
+    color: green;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <div class="logo">DeeChat</div>
+</div>
+
+<div class="nav">
+    <a href="homepage.html">Home</a>
+    <a href="shouts.html">Shouts</a>
+    <a href="topics.html">Topics</a>
+    <a href="#">Chat</a>
+    <a href="#">Members</a>
+    <a href="#">Groups</a>
+</div>
+
+
+<!-- CREATE TOPIC -->
+
+<div class="box">
+
+    <div class="title">
+        Create New Topic
+    </div>
+
+    <div class="content">
+
+        <input
+            type="text"
+            id="topicTitle"
+            maxlength="150"
+            placeholder="Topic title"
+        >
+
+        <select id="topicCategory">
+            <option value="">Select category</option>
+            <option value="General">General</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Music">Music</option>
+            <option value="Gaming">Gaming</option>
+            <option value="Sports">Sports</option>
+            <option value="Technology">Technology</option>
+            <option value="News">News</option>
+            <option value="Off Topic">Off Topic</option>
+        </select>
+
+        <textarea
+            id="topicBody"
+            maxlength="5000"
+            placeholder="Write your topic..."
+        ></textarea>
+
+        <button id="createTopic">
+            Create Topic
+        </button>
+
+        <div id="createMessage"></div>
+
+    </div>
+
+</div>
+
+
+<!-- TOPIC LIST -->
+
+<div class="box">
+
+    <div class="title">
+        Latest Topics
+    </div>
+
+    <div class="content" id="topics">
+        Loading topics...
+    </div>
+
+</div>
+
+
+<script>
+
+const SUPABASE_URL =
+    "https://sqikfejouaxizvidivcg.supabase.co";
+
+const SUPABASE_KEY =
+    "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+let currentUser = null;
+
+
+/* ==============================
+   CHECK LOGIN
+   ============================== */
+
+async function checkLogin() {
+
+    const { data, error } =
+        await supabaseClient.auth.getSession();
+
+    if (error || !data.session) {
+
+        window.location.href =
+            "login.html";
+
+        return false;
+    }
+
+    currentUser =
+        data.session.user;
+
+    return true;
+}
+
+
+/* ==============================
+   LOAD TOPICS
+   ============================== */
+
+async function loadTopics() {
+
+    const container =
+        document.getElementById("topics");
+
+    const { data, error } =
+        await supabaseClient
+            .from("topics")
+            .select(`
+                id,
+                title,
+                body,
+                category,
+                likes_count,
+                replies_count,
+                views_count,
+                created_at,
+                user_id,
+                profiles (
+                    username,
+                    display_name,
+                    site_role
+                )
+            `)
+            .order("created_at", {
+                ascending: false
+            })
+            .limit(50);
+
+
+    if (error) {
+
+        console.error(error);
+
+        container.innerHTML =
+            '<div class="error">' +
+            escapeHTML(error.message) +
+            '</div>';
+
+        return;
+    }
+
+
+    if (!data || data.length === 0) {
+
+        container.textContent =
+            "No topics yet. Create the first one!";
+
+        return;
+    }
+
+
+    container.innerHTML = "";
+
+
+    data.forEach(function(topic) {
+
+        const profile =
+            topic.profiles || {};
+
+        const author =
+            profile.display_name ||
+            profile.username ||
+            "Member";
+
+        const div =
+            document.createElement("div");
+
+        div.className =
+            "topic";
+
+
+        div.innerHTML = `
+
+            <div class="topic-title">
+
+                <a href="#">
+                    ${escapeHTML(topic.title)}
+                </a>
+
+            </div>
+
+            <div>
+                ${escapeHTML(
+                    topic.body.substring(0, 180)
+                )}
+                ${topic.body.length > 180 ? "..." : ""}
+            </div>
+
+            <div class="meta">
+
+                By ${escapeHTML(author)}
+
+                ${formatRole(
+                    profile.site_role
+                )}
+
+                · ${escapeHTML(
+                    topic.category || "General"
+                )}
+
+                · ${new Date(
+                    topic.created_at
+                ).toLocaleString()}
+
+            </div>
+
+            <div class="stats">
+
+                ❤️ ${topic.likes_count || 0}
+                likes
+
+                · 💬 ${topic.replies_count || 0}
+                replies
+
+                · 👁️ ${topic.views_count || 0}
+                views
+
+            </div>
+
+        `;
+
+        container.appendChild(div);
+
+    });
+
+}
+
+
+/* ==============================
+   CREATE TOPIC
+   ============================== */
+
+document
+    .getElementById("createTopic")
+    .addEventListener(
+        "click",
+        async function() {
+
+            const title =
+                document
+                .getElementById("topicTitle")
+                .value
+                .trim();
+
+            const category =
+                document
+                .getElementById("topicCategory")
+                .value;
+
+            const body =
+                document
+                .getElementById("topicBody")
+                .value
+                .trim();
+
+            const message =
+                document
+                .getElementById("createMessage");
+
+
+            if (!title) {
+
+                message.className =
+                    "error";
+
+                message.textContent =
+                    "Enter a topic title.";
+
+                return;
+            }
+
+
+            if (!body) {
+
+                message.className =
+                    "error";
+
+                message.textContent =
+                    "Write something in your topic.";
+
+                return;
+            }
+
+
+            this.disabled = true;
+
+            this.textContent =
+                "Creating...";
+
+
+            const { error } =
+                await supabaseClient
+                    .from("topics")
+                    .insert({
+
+                        user_id:
+                            currentUser.id,
+
+                        title:
+                            title,
+
+                        body:
+                            body,
+
+                        category:
+                            category || "General"
+
+                    });
+
+
+            if (error) {
+
+                message.className =
+                    "error";
+
+                message.textContent =
+                    "Could not create topic: " +
+                    error.message;
+
+                this.disabled = false;
+
+                this.textContent =
+                    "Create Topic";
+
+                return;
+            }
+
+
+            document
+                .getElementById("topicTitle")
+                .value = "";
+
+            document
+                .getElementById("topicBody")
+                .value = "";
+
+            message.className =
+                "success";
+
+            message.textContent =
+                "Topic created!";
+
+
+            this.disabled = false;
+
+            this.textContent =
+                "Create Topic";
+
+
+            loadTopics();
+
+        }
+    );
+
+
+/* ==============================
+   ROLE TAG
+   ============================== */
+
+function formatRole(role) {
+
+    if (!role ||
+        role === "member" ||
+        role === "new_member") {
+
+        return "";
+    }
+
+    if (role === "owner") {
+
+        return " [OWNER]";
+    }
+
+    return " [" +
+        role
+            .replaceAll("_", " ")
+            .toUpperCase() +
+        "]";
+}
+
+
+/* ==============================
+   ESCAPE HTML
+   ============================== */
+
+function escapeHTML(text) {
+
+    const div =
+        document.createElement("div");
+
+    div.textContent =
+        text == null ? "" : text;
+
+    return div.innerHTML;
+}
+
+
+/* ==============================
+   START
+   ============================== */
+
+(async function() {
+
+    const loggedIn =
+        await checkLogin();
+
+    if (!loggedIn) return;
+
+    loadTopics();
+
+})();
+
+</script>
+
+</body>
+</html>
