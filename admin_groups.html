@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeeChat - Group Management</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    margin:0;
+    background:#eaf6ff;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+    color:#222;
+}
+a{color:#0645ad;text-decoration:none}
+a:hover{text-decoration:underline}
+
+.header{
+    background:#075985;
+    color:white;
+    padding:10px;
+    font-size:20px;
+    font-weight:bold;
+}
+
+.nav{
+    background:#dff3ff;
+    border-bottom:1px solid #9ccfe8;
+    padding:7px;
+    line-height:1.8;
+}
+
+.box{
+    margin:8px;
+    border:1px solid #9ccfe8;
+    background:white;
+}
+
+.title{
+    background:#ffe66d;
+    border-bottom:1px solid #d5bd28;
+    padding:7px;
+    font-weight:bold;
+}
+
+.content{padding:8px}
+
+input,textarea,select{
+    width:100%;
+    box-sizing:border-box;
+    padding:7px;
+    margin:4px 0 8px;
+    border:1px solid #aaa;
+    border-radius:2px;
+    font-size:14px;
+}
+
+button{
+    padding:7px 10px;
+    border:1px solid #777;
+    background:#e7f4ff;
+    cursor:pointer;
+    margin:2px;
+}
+
+button:hover{background:#d1ebff}
+
+.group{
+    border-bottom:1px solid #ddd;
+    padding:8px 2px;
+}
+
+.group:last-child{border-bottom:0}
+
+.logo{
+    width:42px;
+    height:42px;
+    object-fit:cover;
+    border:1px solid #aaa;
+    vertical-align:middle;
+    margin-right:7px;
+}
+
+.role{
+    font-size:11px;
+    background:#eee;
+    border:1px solid #bbb;
+    padding:2px 4px;
+}
+
+.danger{
+    background:#ffdede;
+    border-color:#d77;
+}
+
+.small{
+    color:#666;
+    font-size:12px;
+}
+
+#message{
+    margin:8px;
+    padding:7px;
+    display:none;
+    background:#fff7bf;
+    border:1px solid #ddd16a;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">DeeChat - Group Management</div>
+
+<div class="nav">
+<a href="admin.html">Admin</a> |
+<a href="admin_users.html">Users</a> |
+<a href="admin_reports.html">Reports</a> |
+<a href="admin_rooms.html">Rooms</a> |
+<a href="admin_groups.html">Groups</a> |
+<a href="admin_moderators.html">Staff</a> |
+<a href="homepage.html">Home</a>
+</div>
+
+<div id="message"></div>
+
+<div class="box">
+<div class="title">Create New Group</div>
+<div class="content">
+
+<input id="groupName" placeholder="Group name">
+
+<input id="groupAbbreviation" placeholder="Abbreviation">
+
+<input id="groupLogo" placeholder="Logo image URL">
+
+<textarea id="groupDescription" rows="3" placeholder="Group description"></textarea>
+
+<textarea id="groupRules" rows="3" placeholder="Group rules"></textarea>
+
+<label>Group Leader</label>
+<select id="groupLeader">
+<option value="">Select leader</option>
+</select>
+
+<button onclick="createGroup()">Create Group</button>
+
+</div>
+</div>
+
+<div class="box">
+<div class="title">Group Feature Permissions</div>
+<div class="content">
+
+<p class="small">
+Select the features that groups created by the site can be allowed to use.
+The group leader can later activate the features granted by Admin.
+</p>
+
+<label><input type="checkbox" class="feature" value="member_management"> Member Management</label><br>
+<label><input type="checkbox" class="feature" value="rank_management"> Rank Management</label><br>
+<label><input type="checkbox" class="feature" value="leadership_management"> Leadership Management</label><br>
+<label><input type="checkbox" class="feature" value="join_requests"> Join Requests</label><br>
+<label><input type="checkbox" class="feature" value="group_chat"> Group Chat</label><br>
+<label><input type="checkbox" class="feature" value="group_shouts"> Group Shouts</label><br>
+<label><input type="checkbox" class="feature" value="group_topics"> Group Topics</label><br>
+<label><input type="checkbox" class="feature" value="announcements"> Announcements</label><br>
+<label><input type="checkbox" class="feature" value="voting"> Group Voting</label><br>
+<label><input type="checkbox" class="feature" value="activities"> Group Activities</label><br>
+<label><input type="checkbox" class="feature" value="awards"> Group Awards</label><br>
+<label><input type="checkbox" class="feature" value="statistics"> Group Statistics</label><br>
+<label><input type="checkbox" class="feature" value="rules"> Group Rules</label><br>
+<label><input type="checkbox" class="feature" value="notifications"> Group Notifications</label><br>
+<label><input type="checkbox" class="feature" value="member_restrictions"> Member Restrictions</label><br>
+<label><input type="checkbox" class="feature" value="reports"> Group Reports</label>
+
+</div>
+</div>
+
+<div class="box">
+<div class="title">All Groups</div>
+<div class="content">
+<div id="groups">Loading groups...</div>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+    window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentProfile = null;
+
+function showMessage(text){
+    const box = document.getElementById("message");
+    box.textContent = text;
+    box.style.display = "block";
+}
+
+function escapeHtml(text){
+    return String(text ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+function getFeatures(){
+    return [...document.querySelectorAll(".feature:checked")]
+        .map(x => x.value);
+}
+
+async function checkAdmin(){
+
+    const {data:{user}} =
+        await supabaseClient.auth.getUser();
+
+    if(!user){
+        location.href = "login.html";
+        return false;
+    }
+
+    currentUser = user;
+
+    const {data,error} =
+        await supabaseClient
+        .from("profiles")
+        .select("id,username,site_role")
+        .eq("id",user.id)
+        .single();
+
+    if(error || !data){
+        showMessage("Unable to load your account.");
+        return false;
+    }
+
+    currentProfile = data;
+
+    const allowed = [
+        "owner",
+        "super_admin",
+        "admin"
+    ];
+
+    if(!allowed.includes(data.site_role)){
+        document.body.innerHTML =
+            '<div style="padding:20px;font-family:Arial">'+
+            '<b>Access denied.</b><br><br>'+
+            '<a href="homepage.html">Return to DeeChat</a>'+
+            '</div>';
+        return false;
+    }
+
+    return true;
+}
+
+async function loadLeaders(){
+
+    const {data,error} =
+        await supabaseClient
+        .from("profiles")
+        .select("id,username,display_name,site_role")
+        .eq("is_banned",false)
+        .order("username");
+
+    if(error) return;
+
+    const select =
+        document.getElementById("groupLeader");
+
+    data.forEach(user => {
+
+        const option =
+            document.createElement("option");
+
+        option.value = user.id;
+
+        option.textContent =
+            (user.display_name || user.username) +
+            " @" + user.username +
+            " [" + user.site_role + "]";
+
+        select.appendChild(option);
+    });
+}
+
+async function createGroup(){
+
+    const name =
+        document.getElementById("groupName").value.trim();
+
+    const abbreviation =
+        document.getElementById("groupAbbreviation").value.trim();
+
+    const logo =
+        document.getElementById("groupLogo").value.trim();
+
+    const description =
+        document.getElementById("groupDescription").value.trim();
+
+    const rules =
+        document.getElementById("groupRules").value.trim();
+
+    const leader =
+        document.getElementById("groupLeader").value;
+
+    if(!name){
+        alert("Enter a group name.");
+        return;
+    }
+
+    if(!leader){
+        alert("Select a group leader.");
+        return;
+    }
+
+    const features = getFeatures();
+
+    const {data,error} =
+        await supabaseClient
+        .from("groups")
+        .insert({
+            name:name,
+            abbreviation:abbreviation || null,
+            logo_url:logo || null,
+            description:description || null,
+            rules:rules || null,
+            leader_id:leader,
+            created_by:currentUser.id,
+            enabled_features:features,
+            admin_granted_permissions:features
+        })
+        .select()
+        .single();
+
+    if(error){
+        showMessage(error.message);
+        return;
+    }
+
+    await supabaseClient
+        .from("group_members")
+        .upsert({
+            group_id:data.id,
+            user_id:leader,
+            group_rank:"Leader",
+            group_tag:"LEADER",
+            is_co_leader:false
+        });
+
+    showMessage("Group created successfully.");
+
+    document.getElementById("groupName").value="";
+    document.getElementById("groupAbbreviation").value="";
+    document.getElementById("groupLogo").value="";
+    document.getElementById("groupDescription").value="";
+    document.getElementById("groupRules").value="";
+    document.getElementById("groupLeader").value="";
+
+    document
+        .querySelectorAll(".feature")
+        .forEach(x => x.checked=false);
+
+    loadGroups();
+}
+
+async function loadGroups(){
+
+    const container =
+        document.getElementById("groups");
+
+    container.textContent="Loading groups...";
+
+    const {data,error} =
+        await supabaseClient
+        .from("groups")
+        .select(`
+            id,
+            name,
+            abbreviation,
+            logo_url,
+            description,
+            rules,
+            leader_id,
+            enabled_features,
+            admin_granted_permissions,
+            created_at,
+            profiles:leader_id(
+                username,
+                display_name
+            )
+        `)
+        .order("created_at",{ascending:false});
+
+    if(error){
+        container.textContent=error.message;
+        return;
+    }
+
+    if(!data || data.length===0){
+        container.textContent="No groups created yet.";
+        return;
+    }
+
+    container.innerHTML="";
+
+    data.forEach(group => {
+
+        const leader =
+            group.profiles
+            ? (
+                group.profiles.display_name ||
+                group.profiles.username
+            )
+            : "No leader";
+
+        const features =
+            Array.isArray(group.admin_granted_permissions)
+            ? group.admin_granted_permissions
+            : [];
+
+        const div =
+            document.createElement("div");
+
+        div.className="group";
+
+        div.innerHTML = `
+
+            ${
+                group.logo_url
+                ? `<img class="logo"
+                    src="${escapeHtml(group.logo_url)}"
+                    alt="">`
+                : ""
+            }
+
+            <b>${escapeHtml(group.name)}</b>
+
+            ${
+                group.abbreviation
+                ? ` (${escapeHtml(group.abbreviation)})`
+                : ""
+            }
+
+            <br>
+
+            <span class="small">
+                Leader:
+                ${escapeHtml(leader)}
+            </span>
+
+            <br><br>
+
+            ${escapeHtml(group.description || "No description.")}
+
+            <br><br>
+
+            <span class="small">
+                Admin granted features:
+                ${features.length || 0}
+            </span>
+
+            <br><br>
+
+            <a href="group.html?id=${group.id}">
+                View Group
+            </a>
+            &nbsp; | &nbsp;
+
+            <a href="group_panel.html?id=${group.id}">
+                Manage Group
+            </a>
+
+            <br><br>
+
+            <button onclick="editFeatures('${group.id}')">
+                Edit Permissions
+            </button>
+
+            <button
+                class="danger"
+                onclick="deleteGroup('${group.id}','${escapeHtml(group.name)}')">
+                Delete Group
+            </button>
+        `;
+
+        container.appendChild(div);
+    });
+}
+
+async function editFeatures(groupId){
+
+    const {data,error} =
+        await supabaseClient
+        .from("groups")
+        .select("name,admin_granted_permissions")
+        .eq("id",groupId)
+        .single();
+
+    if(error){
+        alert(error.message);
+        return;
+    }
+
+    const current =
+        Array.isArray(data.admin_granted_permissions)
+        ? data.admin_granted_permissions
+        : [];
+
+    const featureList = [
+        "member_management",
+        "rank_management",
+        "leadership_management",
+        "join_requests",
+        "group_chat",
+        "group_shouts",
+        "group_topics",
+        "announcements",
+        "voting",
+        "activities",
+        "awards",
+        "statistics",
+        "rules",
+        "notifications",
+        "member_restrictions",
+        "reports"
+    ];
+
+    const text =
+        featureList.map((feature,index) =>
+            `${index+1}. ${feature}${current.includes(feature) ? " ✓" : ""}`
+        ).join("\n");
+
+    const answer =
+        prompt(
+            "Edit permissions for " + data.name +
+            "\n\n" +
+            text +
+            "\n\nEnter numbers separated by commas."
+        );
+
+    if(answer === null) return;
+
+    const selected =
+        answer.split(",")
+        .map(x => parseInt(x.trim(),10)-1)
+        .filter(x => x >= 0 && x < featureList.length)
+        .map(x => featureList[x]);
+
+    const {error:updateError} =
+        await supabaseClient
+        .from("groups")
+        .update({
+            admin_granted_permissions:selected,
+            enabled_features:selected
+        })
+        .eq("id",groupId);
+
+    if(updateError){
+        alert(updateError.message);
+        return;
+    }
+
+    showMessage("Group permissions updated.");
+    loadGroups();
+}
+
+async function deleteGroup(groupId,name){
+
+    if(!confirm(
+        "Delete the group \"" +
+        name +
+        "\"?\n\nThis cannot be undone."
+    )){
+        return;
+    }
+
+    const {error} =
+        await supabaseClient
+        .from("groups")
+        .delete()
+        .eq("id",groupId);
+
+    if(error){
+        alert(error.message);
+        return;
+    }
+
+    showMessage("Group deleted.");
+    loadGroups();
+}
+
+async function start(){
+
+    const allowed = await checkAdmin();
+
+    if(!allowed) return;
+
+    await loadLeaders();
+    await loadGroups();
+}
+
+start();
+</script>
+
+</body>
+</html>
