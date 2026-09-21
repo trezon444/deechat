@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Group Voting - DeeChat</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{margin:0;background:#eaf6ff;font-family:Arial,sans-serif;font-size:14px;color:#222}
+a{color:#0645ad;text-decoration:none}
+.header{background:#075eaa;color:#fff;padding:10px;font-size:20px;font-weight:bold}
+.nav{background:#fff;border-bottom:1px solid #aaa;padding:7px;line-height:25px}
+.box{margin:8px;background:#fff;border:1px solid #aaa}
+.title{background:#ffd84d;border-bottom:1px solid #aaa;padding:7px;font-weight:bold}
+.content{padding:8px}
+input,textarea,button{width:100%;box-sizing:border-box;padding:8px;margin:4px 0;border:1px solid #999;font-size:14px}
+textarea{min-height:70px}
+button{background:#075eaa;color:#fff;border:1px solid #034477;font-weight:bold}
+.option{border:1px solid #ddd;padding:8px;margin:6px 0;background:#f8fcff}
+.meta{font-size:12px;color:#777}
+.voteBtn{margin-top:6px}
+.error{color:#c00;font-weight:bold}
+.success{color:green;font-weight:bold}
+.hidden{display:none}
+.footer{text-align:center;padding:15px 5px;color:#777;font-size:12px}
+</style>
+</head>
+
+<body>
+
+<div class="header">🗳️ DeeChat</div>
+
+<div class="nav">
+<a href="homepage.html">Home</a> |
+<a href="groups.html">Groups</a> |
+<a id="groupLink" href="#">Group</a> |
+<a id="manageLink" href="#">Manage</a>
+</div>
+
+<div id="loading" class="box">
+<div class="content">Loading...</div>
+</div>
+
+<div id="main" class="hidden">
+
+<div class="box">
+<div class="title">🗳️ <span id="groupName">Group</span> Voting</div>
+<div class="content" id="groupInfo"></div>
+</div>
+
+<div id="createBox" class="box hidden">
+<div class="title">Create Vote</div>
+<div class="content">
+
+<input id="voteTitle" placeholder="Vote title">
+
+<textarea id="voteDescription"
+placeholder="Describe what members are voting about"></textarea>
+
+<input id="option1" placeholder="Option 1">
+<input id="option2" placeholder="Option 2">
+<input id="option3" placeholder="Option 3 (optional)">
+<input id="option4" placeholder="Option 4 (optional)">
+
+<button onclick="createVote()">Create Vote</button>
+
+<div id="createMsg"></div>
+
+</div>
+</div>
+
+<div class="box">
+<div class="title">Active Votes</div>
+<div class="content" id="voteList">
+Loading votes...
+</div>
+</div>
+
+</div>
+
+<div class="footer">
+©DaVeCrEaToR DeeChat 2026
+</div>
+
+<script>
+const SUPABASE_URL="https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY="sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient=
+window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const params=new URLSearchParams(location.search);
+const groupId=params.get("id");
+
+let currentUser=null;
+let group=null;
+let canManage=false;
+
+function esc(text){
+return String(text??"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+}
+
+async function start(){
+
+if(!groupId){
+location.href="groups.html";
+return;
+}
+
+const {data:{session}}=
+await supabaseClient.auth.getSession();
+
+if(!session){
+location.href="login.html";
+return;
+}
+
+currentUser=session.user;
+
+const {data,error}=
+await supabaseClient
+.from("groups")
+.select("*")
+.eq("id",groupId)
+.single();
+
+if(error||!data){
+document.getElementById("loading").innerHTML=
+'<div class="content error">Group not found.</div>';
+return;
+}
+
+group=data;
+
+document.getElementById("groupName").textContent=group.name;
+document.getElementById("groupInfo").textContent=
+group.description||"Group voting";
+
+document.getElementById("groupLink").href=
+"group.html?id="+encodeURIComponent(groupId);
+
+document.getElementById("manageLink").href=
+"group_panel.html?id="+encodeURIComponent(groupId);
+
+await checkManager();
+await loadVotes();
+
+document.getElementById("loading").classList.add("hidden");
+document.getElementById("main").classList.remove("hidden");
+}
+
+async function checkManager(){
+
+const {data:profile}=
+await supabaseClient
+.from("profiles")
+.select("site_role")
+.eq("id",currentUser.id)
+.single();
+
+if(profile &&
+["owner","super_admin","admin"].includes(profile.site_role)){
+canManage=true;
+}
+
+if(group.leader_id===currentUser.id){
+canManage=true;
+}
+
+const {data:member}=
+await supabaseClient
+.from("group_members")
+.select("is_co_leader")
+.eq("group_id",groupId)
+.eq("user_id",currentUser.id)
+.maybeSingle();
+
+if(member && member.is_co_leader){
+canManage=true;
+}
+
+if(canManage){
+document.getElementById("createBox")
+.classList.remove("hidden");
+}
+}
+
+async function loadVotes(){
+
+const list=document.getElementById("voteList");
+
+const {data,error}=
+await supabaseClient
+.from("group_votes")
+.select("*")
+.eq("group_id",groupId)
+.order("created_at",{ascending:false});
+
+if(error){
+
+if(error.message.toLowerCase().includes("group_votes")){
+list.innerHTML=
+'<div class="error">Group voting database table is not created yet.</div>';
+return;
+}
+
+list.innerHTML=
+'<div class="error">'+esc(error.message)+'</div>';
+return;
+}
+
+if(!data||data.length===0){
+list.innerHTML="<div>No votes yet.</div>";
+return;
+}
+
+list.innerHTML=data.map(v=>{
+
+let options=[];
+
+try{
+options=Array.isArray(v.options)
+?v.options
+:JSON.parse(v.options||"[]");
+}catch(e){}
+
+if(!Array.isArray(options)) options=[];
+
+return `
+<div class="option">
+
+<b>🗳️ ${esc(v.title)}</b>
+
+<div class="meta">
+${esc(v.description||"")}
+<br>
+Created: ${new Date(v.created_at).toLocaleString()}
+</div>
+
+${options.map((o,i)=>`
+<div class="option">
+<label>
+<input
+type="radio"
+name="vote_${esc(v.id)}"
+value="${i}"
+style="width:auto">
+${esc(o.text||o)}
+</label>
+
+<div class="meta">
+Votes: ${Number(o.votes||0)}
+</div>
+</div>
+`).join("")}
+
+<button class="voteBtn"
+onclick="castVote('${v.id}')">
+Submit Vote
+</button>
+
+</div>
+`;
+
+}).join("");
+}
+
+async function createVote(){
+
+if(!canManage)return;
+
+const title=document.getElementById("voteTitle").value.trim();
+const description=
+document.getElementById("voteDescription").value.trim();
+
+const values=[
+document.getElementById("option1").value.trim(),
+document.getElementById("option2").value.trim(),
+document.getElementById("option3").value.trim(),
+document.getElementById("option4").value.trim()
+].filter(Boolean);
+
+const msg=document.getElementById("createMsg");
+
+if(!title||values.length<2){
+msg.innerHTML=
+'<p class="error">Enter a title and at least 2 options.</p>';
+return;
+}
+
+const options=values.map(text=>({
+text,
+votes:0
+}));
+
+const {error}=
+await supabaseClient
+.from("group_votes")
+.insert({
+group_id:groupId,
+created_by:currentUser.id,
+title,
+description,
+options
+});
+
+if(error){
+msg.innerHTML=
+'<p class="error">'+esc(error.message)+'</p>';
+return;
+}
+
+document.getElementById("voteTitle").value="";
+document.getElementById("voteDescription").value="";
+document.getElementById("option1").value="";
+document.getElementById("option2").value="";
+document.getElementById("option3").value="";
+document.getElementById("option4").value="";
+
+msg.innerHTML=
+'<p class="success">Vote created.</p>';
+
+await loadVotes();
+}
+
+async function castVote(voteId){
+
+const selected=
+document.querySelector(
+`input[name="vote_${voteId}"]:checked`
+);
+
+if(!selected){
+alert("Select an option first.");
+return;
+}
+
+const optionIndex=Number(selected.value);
+
+const {data:vote,error}=
+await supabaseClient
+.from("group_votes")
+.select("*")
+.eq("id",voteId)
+.single();
+
+if(error||!vote){
+alert("Vote not found.");
+return;
+}
+
+let options=[];
+
+try{
+options=Array.isArray(vote.options)
+?vote.options
+:JSON.parse(vote.options||"[]");
+}catch(e){}
+
+if(!options[optionIndex]){
+alert("Invalid option.");
+return;
+}
+
+const already=
+await supabaseClient
+.from("group_vote_votes")
+.select("id")
+.eq("vote_id",voteId)
+.eq("user_id",currentUser.id)
+.maybeSingle();
+
+if(already.data){
+alert("You have already voted.");
+return;
+}
+
+options[optionIndex].votes=
+Number(options[optionIndex].votes||0)+1;
+
+const update=
+await supabaseClient
+.from("group_votes")
+.update({options})
+.eq("id",voteId);
+
+if(update.error){
+alert(update.error.message);
+return;
+}
+
+const record=
+await supabaseClient
+.from("group_vote_votes")
+.insert({
+vote_id:voteId,
+user_id:currentUser.id,
+option_index:optionIndex
+});
+
+if(record.error){
+alert(record.error.message);
+return;
+}
+
+alert("Vote submitted.");
+await loadVotes();
+}
+
+start();
+</script>
+
+</body>
+</html>
