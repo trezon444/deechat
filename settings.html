@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeeChat - Settings</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{margin:0;background:#eef7ff;font-family:Arial,sans-serif;font-size:14px;color:#222}
+a{color:#0645ad;text-decoration:none}
+.header{background:#0066aa;color:#fff;padding:8px;font-size:20px;font-weight:bold}
+.nav{background:#ffe680;padding:7px}
+.nav a{margin-right:9px}
+.box{margin:8px;border:1px solid #aaa;background:#fff}
+.title{background:#ffd84d;padding:6px;font-weight:bold}
+.content{padding:8px}
+input,textarea{width:100%;box-sizing:border-box;padding:7px;margin:4px 0 8px;border:1px solid #aaa}
+textarea{min-height:75px}
+button{padding:7px 10px;border:1px solid #888;cursor:pointer}
+.primary{background:#0066aa;color:#fff}
+.danger{background:#d9534f;color:#fff}
+.notice{background:#e8f5e9;border:1px solid #9ccc9c;padding:7px;margin-bottom:8px}
+.error{background:#ffe5e5;border:1px solid #cc7777;padding:7px;margin-bottom:8px}
+.small{font-size:12px;color:#777}
+.row{border-bottom:1px solid #ddd;padding:8px 0}
+.row:last-child{border-bottom:0}
+.footer{text-align:center;padding:15px;color:#777;font-size:12px}
+</style>
+</head>
+
+<body>
+
+<div class="header">DeeChat</div>
+
+<div class="nav">
+<a href="homepage.html">Home</a>
+<a href="profile.html">Profile</a>
+<a href="messages.html">Messages</a>
+<a href="notifications.html">Notifications</a>
+<a href="settings.html">Settings</a>
+</div>
+
+<div class="box">
+<div class="title">My Settings</div>
+
+<div class="content">
+
+<div id="status"></div>
+
+<div class="row">
+<b>Account</b>
+<br>
+<span id="email" class="small">Loading...</span>
+</div>
+
+<div class="row">
+<label>Username</label>
+<input id="username" maxlength="30">
+
+<label>Display Name</label>
+<input id="displayName" maxlength="50">
+
+<label>Avatar URL</label>
+<input id="avatarUrl" placeholder="https://...">
+
+<label>Status</label>
+<input id="statusText" maxlength="100">
+
+<label>Bio</label>
+<textarea id="bio" maxlength="500"></textarea>
+
+<button class="primary" onclick="saveProfile()">Save Profile</button>
+</div>
+
+<div class="row">
+<b>Privacy</b>
+<br><br>
+
+<label>
+<input type="checkbox" id="showOnline">
+ Show my online status
+</label>
+
+<br><br>
+
+<label>
+<input type="checkbox" id="allowMessages">
+ Allow members to message me
+</label>
+
+<br><br>
+
+<button class="primary" onclick="savePrivacy()">Save Privacy</button>
+</div>
+
+<div class="row">
+<b>Password</b>
+<br>
+<span class="small">A password reset email will be sent to your account.</span>
+<br><br>
+<button onclick="resetPassword()">Send Password Reset</button>
+</div>
+
+<div class="row">
+<b>Account Information</b>
+<div id="accountInfo" class="small">Loading...</div>
+</div>
+
+<div class="row">
+<b>Sign Out</b>
+<br><br>
+<button class="danger" onclick="logout()">Logout</button>
+</div>
+
+</div>
+</div>
+
+<div class="footer">
+©DaVeCrEaToR DeeChat 2026
+</div>
+
+<script>
+const SUPABASE_URL="https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY="sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient=window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+let currentUser=null;
+
+function escapeHTML(value){
+    return String(value ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
+
+function showStatus(message,error=false){
+    document.getElementById("status").innerHTML=
+        `<div class="${error ? "error":"notice"}">${escapeHTML(message)}</div>`;
+}
+
+async function init(){
+
+    const {data:{session}}=
+        await supabaseClient.auth.getSession();
+
+    if(!session){
+        location.href="login.html";
+        return;
+    }
+
+    currentUser=session.user;
+
+    document.getElementById("email").textContent=
+        currentUser.email || "";
+
+    await loadProfile();
+}
+
+async function loadProfile(){
+
+    const {data,error}=await supabaseClient
+        .from("profiles")
+        .select(`
+            username,
+            display_name,
+            avatar_url,
+            status_text,
+            bio,
+            site_role,
+            points,
+            is_verified,
+            is_banned,
+            is_suspended,
+            created_at,
+            last_active_at
+        `)
+        .eq("id",currentUser.id)
+        .single();
+
+    if(error){
+        showStatus("Could not load your profile.",true);
+        return;
+    }
+
+    document.getElementById("username").value=data.username || "";
+    document.getElementById("displayName").value=data.display_name || "";
+    document.getElementById("avatarUrl").value=data.avatar_url || "";
+    document.getElementById("statusText").value=data.status_text || "";
+    document.getElementById("bio").value=data.bio || "";
+
+    document.getElementById("accountInfo").innerHTML=`
+        Username: ${escapeHTML(data.username)}<br>
+        Role: ${escapeHTML(data.site_role)}<br>
+        Points: ${Number(data.points || 0)}<br>
+        Verified: ${data.is_verified ? "Yes":"No"}<br>
+        Banned: ${data.is_banned ? "Yes":"No"}<br>
+        Suspended: ${data.is_suspended ? "Yes":"No"}<br>
+        Joined: ${formatDate(data.created_at)}<br>
+        Last Active: ${formatDate(data.last_active_at)}
+    `;
+
+    const savedOnline=
+        localStorage.getItem("deechat_show_online");
+
+    const savedMessages=
+        localStorage.getItem("deechat_allow_messages");
+
+    document.getElementById("showOnline").checked=
+        savedOnline !== "false";
+
+    document.getElementById("allowMessages").checked=
+        savedMessages !== "false";
+}
+
+async function saveProfile(){
+
+    const username=
+        document.getElementById("username").value.trim();
+
+    const displayName=
+        document.getElementById("displayName").value.trim();
+
+    const avatarUrl=
+        document.getElementById("avatarUrl").value.trim();
+
+    const statusText=
+        document.getElementById("statusText").value.trim();
+
+    const bio=
+        document.getElementById("bio").value.trim();
+
+    if(!username){
+        showStatus("Username is required.",true);
+        return;
+    }
+
+    /*
+      IMPORTANT:
+      This update should later be restricted by RLS so normal
+      members cannot modify protected fields such as site_role,
+      points, badges, verification, ban or suspension status.
+    */
+
+    const {error}=await supabaseClient
+        .from("profiles")
+        .update({
+            username:username,
+            display_name:displayName,
+            avatar_url:avatarUrl || null,
+            status_text:statusText,
+            bio:bio
+        })
+        .eq("id",currentUser.id);
+
+    if(error){
+        showStatus("Could not save profile: "+error.message,true);
+        return;
+    }
+
+    showStatus("Profile saved successfully.");
+    await loadProfile();
+}
+
+function savePrivacy(){
+
+    localStorage.setItem(
+        "deechat_show_online",
+        document.getElementById("showOnline").checked
+    );
+
+    localStorage.setItem(
+        "deechat_allow_messages",
+        document.getElementById("allowMessages").checked
+    );
+
+    showStatus("Privacy settings saved on this device.");
+}
+
+async function resetPassword(){
+
+    const {error}=await supabaseClient.auth.resetPasswordForEmail(
+        currentUser.email,
+        {
+            redirectTo:
+            location.origin+
+            location.pathname.replace(
+                "settings.html",
+                "login.html"
+            )
+        }
+    );
+
+    if(error){
+        showStatus("Could not send reset email.",true);
+        return;
+    }
+
+    showStatus("Password reset email sent.");
+}
+
+async function logout(){
+
+    await supabaseClient.auth.signOut();
+    location.href="index.html";
+}
+
+function formatDate(date){
+    if(!date) return "Unknown";
+    return new Date(date).toLocaleString();
+}
+
+init();
+</script>
+
+</body>
+</html>
