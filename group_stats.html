@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Group Statistics - DeeChat</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{margin:0;background:#eaf6ff;font-family:Arial,sans-serif;font-size:14px;color:#222}
+a{color:#0645ad;text-decoration:none}
+.header{background:#075eaa;color:#fff;padding:10px;font-size:20px;font-weight:bold}
+.nav{background:#fff;border-bottom:1px solid #aaa;padding:7px;line-height:25px}
+.box{margin:8px;background:#fff;border:1px solid #aaa}
+.title{background:#ffd84d;border-bottom:1px solid #aaa;padding:7px;font-weight:bold}
+.content{padding:8px}
+.stat{display:block;border-bottom:1px solid #ddd;padding:9px 3px}
+.stat:last-child{border-bottom:0}
+.number{font-size:20px;font-weight:bold;color:#075eaa}
+.meta{font-size:12px;color:#777}
+.error{color:#c00;font-weight:bold}
+.hidden{display:none}
+.footer{text-align:center;padding:15px 5px;color:#777;font-size:12px}
+</style>
+</head>
+
+<body>
+
+<div class="header">📊 DeeChat</div>
+
+<div class="nav">
+<a href="homepage.html">Home</a> |
+<a href="groups.html">Groups</a> |
+<a id="groupLink" href="#">Group</a> |
+<a id="manageLink" href="#">Manage</a>
+</div>
+
+<div id="loading" class="box">
+<div class="content">Loading statistics...</div>
+</div>
+
+<div id="main" class="hidden">
+
+<div class="box">
+<div class="title">📊 <span id="groupName">Group</span> Statistics</div>
+<div class="content" id="groupInfo"></div>
+</div>
+
+<div class="box">
+<div class="title">Members</div>
+<div class="content">
+
+<div class="stat">
+👥 Total Members
+<div class="number" id="members">0</div>
+</div>
+
+<div class="stat">
+🟢 Active Members
+<div class="number" id="activeMembers">0</div>
+<div class="meta">Active within the last 5 minutes</div>
+</div>
+
+<div class="stat">
+👑 Co-Leaders
+<div class="number" id="coLeaders">0</div>
+</div>
+
+</div>
+</div>
+
+<div class="box">
+<div class="title">💬 Group Activity</div>
+<div class="content">
+
+<div class="stat">
+📢 Group Shouts
+<div class="number" id="shouts">0</div>
+</div>
+
+<div class="stat">
+📝 Group Topics
+<div class="number" id="topics">0</div>
+</div>
+
+<div class="stat">
+💬 Group Messages
+<div class="number" id="messages">0</div>
+</div>
+
+</div>
+</div>
+
+<div class="box">
+<div class="title">🏆 Rewards & Activity</div>
+<div class="content">
+
+<div class="stat">
+🏆 Awards
+<div class="number" id="awards">0</div>
+</div>
+
+<div class="stat">
+🎯 Activities
+<div class="number" id="activities">0</div>
+</div>
+
+<div class="stat">
+🗳️ Votes
+<div class="number" id="votes">0</div>
+</div>
+
+</div>
+</div>
+
+<div class="box">
+<div class="title">📅 Group Information</div>
+<div class="content" id="dates"></div>
+</div>
+
+</div>
+
+<div class="footer">
+©DaVeCrEaToR DeeChat 2026
+</div>
+
+<script>
+const SUPABASE_URL="https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY="sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient=
+window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
+
+const params=new URLSearchParams(location.search);
+const groupId=params.get("id");
+
+let currentUser=null;
+let group=null;
+
+async function start(){
+
+if(!groupId){
+location.href="groups.html";
+return;
+}
+
+const {data:{session}}=
+await supabaseClient.auth.getSession();
+
+if(!session){
+location.href="login.html";
+return;
+}
+
+currentUser=session.user;
+
+const {data,error}=
+await supabaseClient
+.from("groups")
+.select("*")
+.eq("id",groupId)
+.single();
+
+if(error||!data){
+document.getElementById("loading").innerHTML=
+'<div class="content error">Group not found.</div>';
+return;
+}
+
+group=data;
+
+document.getElementById("groupName").textContent=
+group.name;
+
+document.getElementById("groupInfo").textContent=
+group.description||"Group statistics";
+
+document.getElementById("groupLink").href=
+"group.html?id="+encodeURIComponent(groupId);
+
+document.getElementById("manageLink").href=
+"group_panel.html?id="+encodeURIComponent(groupId);
+
+await loadStatistics();
+
+document.getElementById("loading").classList.add("hidden");
+document.getElementById("main").classList.remove("hidden");
+}
+
+async function countRows(table,column="group_id"){
+
+const {count,error}=
+await supabaseClient
+.from(table)
+.select("*",{count:"exact",head:true})
+.eq(column,groupId);
+
+if(error)return 0;
+
+return count||0;
+}
+
+async function loadStatistics(){
+
+const {count:memberCount}=
+await supabaseClient
+.from("group_members")
+.select("*",{count:"exact",head:true})
+.eq("group_id",groupId);
+
+document.getElementById("members").textContent=
+memberCount||0;
+
+const {data:members}=
+await supabaseClient
+.from("group_members")
+.select(`
+user_id,
+is_co_leader,
+profiles(last_active_at)
+`)
+.eq("group_id",groupId);
+
+let active=0;
+let coLeaders=0;
+
+const fiveMinutes=
+Date.now()-5*60*1000;
+
+(members||[]).forEach(member=>{
+
+if(member.is_co_leader)coLeaders++;
+
+const last=
+member.profiles?.last_active_at;
+
+if(last && new Date(last).getTime()>fiveMinutes){
+active++;
+}
+
+});
+
+document.getElementById("activeMembers").textContent=active;
+document.getElementById("coLeaders").textContent=coLeaders;
+
+document.getElementById("shouts").textContent=
+await countRows("shouts");
+
+document.getElementById("topics").textContent=
+await countRows("topics");
+
+document.getElementById("messages").textContent=
+await countRows("messages");
+
+document.getElementById("awards").textContent=
+await countRows("group_awards");
+
+document.getElementById("activities").textContent=
+await countRows("group_activities");
+
+document.getElementById("votes").textContent=
+await countRows("group_votes");
+
+document.getElementById("dates").innerHTML=`
+<b>Created:</b>
+${new Date(group.created_at).toLocaleString()}
+<br><br>
+
+<b>Group ID:</b>
+${group.id}
+`;
+
+}
+
+start();
+</script>
+
+</body>
+</html>
