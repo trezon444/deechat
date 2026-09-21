@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeeChat - Currency Leaderboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{margin:0;background:#eaf6ff;font:14px Arial;color:#222}
+a{color:#0645ad;text-decoration:none}
+.header{background:#075985;color:#fff;padding:10px;font-size:20px;font-weight:bold}
+.nav{background:#dff3ff;border-bottom:1px solid #9ccfe8;padding:7px;line-height:1.8}
+.box{margin:8px;border:1px solid #9ccfe8;background:#fff}
+.title{background:#ffe66d;border-bottom:1px solid #d5bd28;padding:7px;font-weight:bold}
+.content{padding:8px}
+input{width:100%;box-sizing:border-box;padding:8px;border:1px solid #aaa}
+.tabs{padding:7px;background:#f5faff;border-bottom:1px solid #ddd}
+button{padding:7px 10px;border:1px solid #777;background:#e7f4ff;margin:2px}
+button.active{font-weight:bold;background:#ffe66d}
+.user{padding:9px 2px;border-bottom:1px solid #ddd}
+.rank{display:inline-block;width:30px;font-weight:bold}
+.avatar{width:38px;height:38px;object-fit:cover;border:1px solid #aaa;vertical-align:middle;margin-right:6px}
+.coin{font-weight:bold}
+.top1{background:#fff5c2}
+.top2{background:#eee}
+.top3{background:#f5dfc8}
+.small{font-size:12px;color:#666}
+#message{display:none;margin:8px;padding:7px;background:#fff7bf;border:1px solid #ddd16a}
+</style>
+</head>
+
+<body>
+
+<div class="header">DeeChat - Currency Leaderboard</div>
+
+<div class="nav">
+<a href="homepage.html">Home</a> |
+<a href="currency.html">Currency</a> |
+<a href="currency_leaderboard.html">Leaderboard</a> |
+<a href="transactions.html">Transactions</a> |
+<a href="members.html">Members</a>
+</div>
+
+<div id="message"></div>
+
+<div class="box">
+<div class="title">🏆 Currency Leaderboard</div>
+
+<div class="tabs">
+<button id="gcBtn" class="active" onclick="switchCurrency('gc')">
+🪙 GC
+</button>
+
+<button id="creditsBtn" onclick="switchCurrency('credits')">
+⭐ Credits
+</button>
+</div>
+
+<div class="content">
+
+<input
+id="search"
+placeholder="Search username..."
+oninput="renderUsers()">
+
+<br><br>
+
+<div id="myPosition" class="small">
+Loading your position...
+</div>
+
+</div>
+</div>
+
+<div class="box">
+<div class="title" id="listTitle">🪙 Gold Coins</div>
+<div class="content">
+<div id="leaderboard">Loading...</div>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL=
+"https://sqikfejouaxizvidivcg.supabase.co";
+
+const SUPABASE_KEY=
+"sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient=
+window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
+
+let users=[];
+let currentUser=null;
+let currency="gc";
+
+function esc(v){
+return String(v??"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+}
+
+function switchCurrency(type){
+
+currency=type;
+
+document
+.getElementById("gcBtn")
+.classList.toggle("active",type==="gc");
+
+document
+.getElementById("creditsBtn")
+.classList.toggle("active",type==="credits");
+
+document.getElementById("listTitle").textContent=
+type==="gc"
+? "🪙 Gold Coins - Richest Members"
+: "⭐ Credits - Highest Balances";
+
+renderUsers();
+}
+
+function renderUsers(){
+
+const container=
+document.getElementById("leaderboard");
+
+const search=
+document.getElementById("search")
+.value
+.trim()
+.toLowerCase();
+
+let filtered=users.filter(user=>{
+
+const username=
+(user.username||"").toLowerCase();
+
+const display=
+(user.display_name||"").toLowerCase();
+
+return username.includes(search) ||
+display.includes(search);
+});
+
+filtered.sort((a,b)=>
+Number(b[currency]||0)-
+Number(a[currency]||0)
+);
+
+if(!filtered.length){
+container.textContent="No members found.";
+return;
+}
+
+container.innerHTML="";
+
+filtered.forEach((user,index)=>{
+
+const globalRank=
+users
+.slice()
+.sort((a,b)=>
+Number(b[currency]||0)-
+Number(a[currency]||0)
+)
+.findIndex(x=>x.id===user.id)+1;
+
+const div=document.createElement("div");
+
+div.className="user";
+
+if(globalRank===1) div.classList.add("top1");
+if(globalRank===2) div.classList.add("top2");
+if(globalRank===3) div.classList.add("top3");
+
+const avatar=user.avatar_url
+? `<img class="avatar"
+src="${esc(user.avatar_url)}"
+alt="">`
+: "";
+
+let medal="";
+
+if(globalRank===1) medal="🥇";
+else if(globalRank===2) medal="🥈";
+else if(globalRank===3) medal="🥉";
+
+div.innerHTML=`
+
+<span class="rank">
+${medal || "#"+globalRank}
+</span>
+
+${avatar}
+
+<b>
+<a href="profile.html?id=${user.id}">
+${esc(user.display_name||user.username)}
+</a>
+</b>
+
+<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+<a href="profile.html?id=${user.id}">
+@${esc(user.username)}
+</a>
+
+<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+<span class="coin">
+${currency==="gc"?"🪙":"⭐"}
+${Number(user[currency]||0).toLocaleString()}
+${currency==="gc"?"GC":"Credits"}
+</span>
+
+`;
+
+container.appendChild(div);
+});
+
+updateMyPosition();
+}
+
+function updateMyPosition(){
+
+if(!currentUser)return;
+
+const sorted=
+users
+.slice()
+.sort((a,b)=>
+Number(b[currency]||0)-
+Number(a[currency]||0)
+);
+
+const position=
+sorted.findIndex(x=>x.id===currentUser.id)+1;
+
+const me=
+sorted.find(x=>x.id===currentUser.id);
+
+const box=
+document.getElementById("myPosition");
+
+if(!me){
+box.textContent="Your position is unavailable.";
+return;
+}
+
+box.innerHTML=
+"<b>My Position:</b> #"+
+position+
+" &nbsp; | &nbsp; "+
+(currency==="gc"?"🪙 ":"⭐ ")+
+Number(me[currency]||0).toLocaleString()+
+(currency==="gc"?" GC":" Credits");
+}
+
+async function loadLeaderboard(){
+
+const {data:{user}}=
+await supabaseClient.auth.getUser();
+
+if(!user){
+location.href="login.html";
+return;
+}
+
+currentUser=user;
+
+const {data,error}=
+await supabaseClient
+.from("profiles")
+.select(`
+id,
+username,
+display_name,
+avatar_url,
+gc,
+credits,
+is_banned
+`)
+.eq("is_banned",false);
+
+if(error){
+
+document.getElementById("leaderboard")
+.textContent=error.message;
+
+return;
+}
+
+users=data||[];
+
+renderUsers();
+}
+
+loadLeaderboard();
+</script>
+
+</body>
+</html>
