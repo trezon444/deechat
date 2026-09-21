@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Group Awards - DeeChat</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{margin:0;background:#eaf6ff;font-family:Arial,sans-serif;font-size:14px;color:#222}
+a{color:#0645ad;text-decoration:none}
+.header{background:#075eaa;color:#fff;padding:10px;font-size:20px;font-weight:bold}
+.nav{background:#fff;border-bottom:1px solid #aaa;padding:7px;line-height:25px}
+.box{margin:8px;background:#fff;border:1px solid #aaa}
+.title{background:#ffd84d;border-bottom:1px solid #aaa;padding:7px;font-weight:bold}
+.content{padding:8px}
+input,textarea,button{width:100%;box-sizing:border-box;padding:8px;margin:4px 0;border:1px solid #999;font-size:14px}
+button{background:#075eaa;color:#fff;border:1px solid #034477;font-weight:bold}
+.award{border-bottom:1px solid #ddd;padding:9px 3px}
+.award:last-child{border-bottom:0}
+.meta{font-size:12px;color:#777}
+.reward{font-weight:bold;margin-top:5px}
+.error{color:#c00;font-weight:bold}
+.success{color:green;font-weight:bold}
+.hidden{display:none}
+.footer{text-align:center;padding:15px 5px;color:#777;font-size:12px}
+</style>
+</head>
+
+<body>
+
+<div class="header">🏆 DeeChat</div>
+
+<div class="nav">
+<a href="homepage.html">Home</a> |
+<a href="groups.html">Groups</a> |
+<a id="groupLink" href="#">Group</a> |
+<a id="manageLink" href="#">Manage</a>
+</div>
+
+<div id="loading" class="box">
+<div class="content">Loading...</div>
+</div>
+
+<div id="main" class="hidden">
+
+<div class="box">
+<div class="title">🏆 <span id="groupName">Group</span> Awards</div>
+<div class="content" id="groupInfo"></div>
+</div>
+
+<div id="createBox" class="box hidden">
+<div class="title">Create Award</div>
+<div class="content">
+
+<input id="awardName" placeholder="Award name">
+
+<textarea id="awardDescription"
+placeholder="Describe the award..."></textarea>
+
+<input id="awardReward"
+type="number"
+min="0"
+placeholder="GC reward">
+
+<button onclick="createAward()">
+Create Award
+</button>
+
+<div id="createMsg"></div>
+
+</div>
+</div>
+
+<div class="box">
+<div class="title">Group Awards</div>
+<div class="content" id="awardList">
+Loading awards...
+</div>
+</div>
+
+</div>
+
+<div class="footer">
+©DaVeCrEaToR DeeChat 2026
+</div>
+
+<script>
+const SUPABASE_URL="https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY="sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient=
+window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
+
+const params=new URLSearchParams(location.search);
+const groupId=params.get("id");
+
+let currentUser=null;
+let group=null;
+let canManage=false;
+
+function esc(text){
+return String(text??"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+}
+
+async function start(){
+
+if(!groupId){
+location.href="groups.html";
+return;
+}
+
+const {data:{session}}=
+await supabaseClient.auth.getSession();
+
+if(!session){
+location.href="login.html";
+return;
+}
+
+currentUser=session.user;
+
+const {data,error}=
+await supabaseClient
+.from("groups")
+.select("*")
+.eq("id",groupId)
+.single();
+
+if(error||!data){
+document.getElementById("loading").innerHTML=
+'<div class="content error">Group not found.</div>';
+return;
+}
+
+group=data;
+
+document.getElementById("groupName").textContent=group.name;
+
+document.getElementById("groupInfo").textContent=
+group.description||"Group awards and member recognition.";
+
+document.getElementById("groupLink").href=
+"group.html?id="+encodeURIComponent(groupId);
+
+document.getElementById("manageLink").href=
+"group_panel.html?id="+encodeURIComponent(groupId);
+
+await checkManager();
+await loadAwards();
+
+document.getElementById("loading").classList.add("hidden");
+document.getElementById("main").classList.remove("hidden");
+}
+
+async function checkManager(){
+
+const {data:profile}=
+await supabaseClient
+.from("profiles")
+.select("site_role")
+.eq("id",currentUser.id)
+.single();
+
+if(profile &&
+["owner","super_admin","admin"].includes(profile.site_role)){
+canManage=true;
+}
+
+if(group.leader_id===currentUser.id){
+canManage=true;
+}
+
+const {data:member}=
+await supabaseClient
+.from("group_members")
+.select("is_co_leader")
+.eq("group_id",groupId)
+.eq("user_id",currentUser.id)
+.maybeSingle();
+
+if(member && member.is_co_leader){
+canManage=true;
+}
+
+if(canManage){
+document.getElementById("createBox")
+.classList.remove("hidden");
+}
+}
+
+async function loadAwards(){
+
+const list=document.getElementById("awardList");
+
+const {data,error}=
+await supabaseClient
+.from("group_awards")
+.select(`
+    id,
+    name,
+    description,
+    gc_reward,
+    awarded_to,
+    created_at
+`)
+.eq("group_id",groupId)
+.order("created_at",{ascending:false});
+
+if(error){
+
+if(error.message.toLowerCase().includes("group_awards")){
+list.innerHTML=
+'<div class="error">Group awards database table is not created yet.</div>';
+return;
+}
+
+list.innerHTML=
+'<div class="error">'+esc(error.message)+'</div>';
+return;
+}
+
+if(!data||data.length===0){
+list.innerHTML="<div>No awards yet.</div>";
+return;
+}
+
+const userIds=[
+...new Set(
+data
+.map(a=>a.awarded_to)
+.filter(Boolean)
+)
+];
+
+let profiles=[];
+
+if(userIds.length){
+
+const result=
+await supabaseClient
+.from("profiles")
+.select("id,username,display_name")
+.in("id",userIds);
+
+profiles=result.data||[];
+}
+
+function getUser(id){
+
+return profiles.find(p=>p.id===id);
+}
+
+list.innerHTML=data.map(a=>{
+
+const winner=getUser(a.awarded_to);
+
+return `
+<div class="award">
+
+<b>🏆 ${esc(a.name)}</b>
+
+<div class="meta">
+Created:
+${new Date(a.created_at).toLocaleString()}
+</div>
+
+<div style="margin-top:5px">
+${esc(a.description||"").replace(/\n/g,"<br>")}
+</div>
+
+${
+winner
+?
+`
+<div style="margin-top:6px">
+Awarded to:
+<a href="profile.html?id=${encodeURIComponent(winner.id)}">
+<b>${esc(winner.display_name||winner.username)}</b>
+</a>
+</div>
+`
+:
+`
+<div class="meta" style="margin-top:6px">
+Not awarded yet
+</div>
+`
+}
+
+${
+Number(a.gc_reward||0)>0
+?
+`
+<div class="reward">
+🪙 Reward:
+${Number(a.gc_reward).toLocaleString()} GC
+</div>
+`
+:""
+}
+
+${
+canManage && !winner
+?
+`
+<button onclick="awardMember('${a.id}')">
+Award To Member
+</button>
+`
+:""
+}
+
+</div>
+`;
+
+}).join("");
+}
+
+async function createAward(){
+
+if(!canManage)return;
+
+const name=
+document.getElementById("awardName").value.trim();
+
+const description=
+document.getElementById("awardDescription").value.trim();
+
+const reward=
+Number(document.getElementById("awardReward").value||0);
+
+const msg=document.getElementById("createMsg");
+
+if(!name){
+msg.innerHTML=
+'<p class="error">Enter an award name.</p>';
+return;
+}
+
+const {error}=
+await supabaseClient
+.from("group_awards")
+.insert({
+group_id:groupId,
+name,
+description,
+gc_reward:reward,
+created_by:currentUser.id
+});
+
+if(error){
+msg.innerHTML=
+'<p class="error">'+esc(error.message)+'</p>';
+return;
+}
+
+document.getElementById("awardName").value="";
+document.getElementById("awardDescription").value="";
+document.getElementById("awardReward").value="";
+
+msg.innerHTML=
+'<p class="success">Award created.</p>';
+
+await loadAwards();
+}
+
+async function awardMember(awardId){
+
+const username=
+prompt("Enter the DeeChat username of the member:");
+
+if(!username)return;
+
+const {data:user,error}=
+await supabaseClient
+.from("profiles")
+.select("id,username,display_name")
+.eq("username",username.trim())
+.single();
+
+if(error||!user){
+alert("Member not found.");
+return;
+}
+
+const {data:member,error:memberError}=
+await supabaseClient
+.from("group_members")
+.select("user_id")
+.eq("group_id",groupId)
+.eq("user_id",user.id)
+.maybeSingle();
+
+if(memberError||!member){
+alert("That user is not a member of this group.");
+return;
+}
+
+const {data:award,error:awardError}=
+await supabaseClient
+.from("group_awards")
+.select("gc_reward")
+.eq("id",awardId)
+.single();
+
+if(awardError||!award){
+alert("Award not found.");
+return;
+}
+
+const {error:updateError}=
+await supabaseClient
+.from("group_awards")
+.update({
+awarded_to:user.id,
+awarded_at:new Date().toISOString()
+})
+.eq("id",awardId);
+
+if(updateError){
+alert(updateError.message);
+return;
+}
+
+/*
+GC reward should be credited through a secure
+Supabase RPC in the final production version.
+*/
+
+if(Number(award.gc_reward||0)>0){
+
+await supabaseClient
+.from("notifications")
+.insert({
+user_id:user.id,
+type:"group_award",
+title:"🏆 Group Award",
+body:
+"You received a group award from "+
+group.name+
+" and earned "+
+Number(award.gc_reward).toLocaleString()+
+" GC."
+});
+}
+
+alert(
+"Award given to "+
+(user.display_name||user.username)
+);
+
+await loadAwards();
+}
+
+start();
+</script>
+
+</body>
+</html>
