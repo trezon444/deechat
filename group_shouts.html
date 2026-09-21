@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>DeeChat - Group Shouts</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    margin:0;
+    background:#f3f3e8;
+    color:#222;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+}
+
+a{
+    color:#0645ad;
+    text-decoration:none;
+}
+
+a:hover{
+    text-decoration:underline;
+}
+
+.header{
+    background:#174a8b;
+    color:white;
+    padding:8px;
+    font-size:20px;
+    font-weight:bold;
+}
+
+.nav{
+    background:#fff3a6;
+    border-bottom:1px solid #d5c85b;
+    padding:6px;
+    line-height:1.8;
+}
+
+.nav a{
+    margin-right:8px;
+}
+
+.box{
+    background:#fff;
+    border:1px solid #ccc;
+    margin:8px;
+    padding:8px;
+}
+
+.title{
+    background:#ffe45c;
+    border:1px solid #d6c13b;
+    padding:6px;
+    font-weight:bold;
+    margin-bottom:7px;
+}
+
+textarea{
+    width:100%;
+    box-sizing:border-box;
+    min-height:75px;
+    border:1px solid #aaa;
+    padding:7px;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+}
+
+button{
+    background:#174a8b;
+    color:#fff;
+    border:1px solid #0d315e;
+    padding:6px 10px;
+    margin-top:5px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#0d315e;
+}
+
+.shout{
+    border-bottom:1px dotted #aaa;
+    padding:8px 0;
+}
+
+.avatar{
+    width:40px;
+    height:40px;
+    float:left;
+    margin-right:7px;
+    object-fit:cover;
+    background:#ddd;
+    border:1px solid #bbb;
+}
+
+.clear{
+    clear:both;
+}
+
+.role{
+    color:#8a5200;
+    font-size:11px;
+    font-weight:bold;
+}
+
+.site-role{
+    color:#174a8b;
+    font-size:11px;
+    font-weight:bold;
+}
+
+.small{
+    color:#666;
+    font-size:12px;
+}
+
+.like{
+    color:#0645ad;
+    cursor:pointer;
+    font-size:12px;
+}
+
+.error{
+    color:#a00000;
+    font-weight:bold;
+}
+
+.success{
+    color:#087a21;
+    font-weight:bold;
+}
+
+.notice{
+    background:#fff8c7;
+    border:1px solid #ddd083;
+    padding:7px;
+}
+
+.footer{
+    text-align:center;
+    color:#666;
+    padding:15px 5px;
+    font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    DeeChat - Group Shouts
+</div>
+
+<div class="nav">
+    <a href="homepage.html">Home</a>
+    <a href="groups.html">Groups</a>
+    <a id="groupLink" href="groups.html">Group</a>
+    <a href="shouts.html">Shouts</a>
+    <a href="members.html">Members</a>
+</div>
+
+<div id="messageBox"></div>
+
+<div class="box">
+    <div class="title">
+        Group
+    </div>
+
+    <div id="groupInfo">
+        Loading group...
+    </div>
+</div>
+
+<div class="box">
+    <div class="title">
+        Create Group Shout
+    </div>
+
+    <textarea
+        id="shoutText"
+        maxlength="500"
+        placeholder="Write something to your group..."></textarea>
+
+    <br>
+
+    <button onclick="createShout()">
+        Post Shout
+    </button>
+
+    <div class="small">
+        Maximum 500 characters.
+    </div>
+</div>
+
+<div class="box">
+    <div class="title">
+        Latest Group Shouts
+    </div>
+
+    <div id="shouts">
+        Loading shouts...
+    </div>
+</div>
+
+<div class="footer">
+    © DeeChat 2026
+</div>
+
+<script>
+
+const SUPABASE_URL =
+    "https://sqikfejouaxizvidivcg.supabase.co";
+
+const SUPABASE_KEY =
+    "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+let currentUser = null;
+let currentProfile = null;
+let groupId = null;
+let groupData = null;
+let groupMembers = [];
+
+
+/* =========================
+   HELPERS
+========================= */
+
+function esc(value){
+
+    return String(value ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+
+function formatDate(date){
+
+    if(!date) return "";
+
+    return new Date(date).toLocaleString([],{
+        year:"numeric",
+        month:"short",
+        day:"numeric",
+        hour:"2-digit",
+        minute:"2-digit"
+    });
+}
+
+
+function roleTag(profile){
+
+    if(!profile) return "";
+
+    const roles = {
+
+        owner:"OWNER",
+
+        super_admin:"SUPER ADMIN",
+
+        admin:"ADMIN",
+
+        head_mod:"HEAD MOD",
+
+        moderator:"MOD",
+
+        vip:"VIP",
+
+        verified_member:"VERIFIED",
+
+        member:"MEMBER",
+
+        new_member:"NEW MEMBER"
+    };
+
+    const role =
+        roles[profile.site_role] ||
+        String(profile.site_role || "")
+        .toUpperCase();
+
+    return `
+        <span class="site-role">
+            [${esc(role)}]
+        </span>
+    `;
+}
+
+
+function showMessage(text,isError){
+
+    document.getElementById("messageBox").innerHTML = `
+
+        <div class="box">
+
+            <span class="${isError ? "error":"success"}">
+                ${esc(text)}
+            </span>
+
+        </div>
+    `;
+
+    setTimeout(function(){
+
+        document.getElementById("messageBox").innerHTML = "";
+
+    },4000);
+}
+
+
+/* =========================
+   GET GROUP ID
+========================= */
+
+function getGroupId(){
+
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+    return params.get("id");
+}
+
+
+/* =========================
+   AUTH
+========================= */
+
+async function checkAuth(){
+
+    const {data,error} =
+        await supabaseClient.auth.getSession();
+
+    if(error || !data.session){
+
+        window.location.href =
+            "login.html";
+
+        return false;
+    }
+
+    currentUser =
+        data.session.user;
+
+
+    const {data:profile,error:profileError} =
+        await supabaseClient
+            .from("profiles")
+            .select("*")
+            .eq("id",currentUser.id)
+            .single();
+
+    if(profileError){
+
+        console.error(profileError);
+    }
+
+    currentProfile = profile;
+
+    return true;
+}
+
+
+/* =========================
+   LOAD GROUP
+========================= */
+
+async function loadGroup(){
+
+    const {data,error} =
+        await supabaseClient
+            .from("groups")
+            .select("*")
+            .eq("id",groupId)
+            .single();
+
+    if(error || !data){
+
+        document.getElementById("groupInfo").innerHTML = `
+
+            <span class="error">
+                Group not found.
+            </span>
+
+        `;
+
+        return false;
+    }
+
+    groupData = data;
+
+
+    document.getElementById("groupLink").href =
+        "group.html?id=" + groupId;
+
+
+    document.getElementById("groupInfo").innerHTML = `
+
+        <b>
+            ${esc(groupData.name)}
+        </b>
+
+        ${
+            groupData.abbreviation
+            ? " [" +
+              esc(groupData.abbreviation) +
+              "]"
+            : ""
+        }
+
+        <br>
+
+        <span class="small">
+            ${esc(
+                groupData.description ||
+                "No group description."
+            )}
+        </span>
+
+        <br><br>
+
+        <a href="group.html?id=${groupId}">
+            View Group
+        </a>
+
+    `;
+
+    return true;
+}
+
+
+/* =========================
+   LOAD MEMBERS
+========================= */
+
+async function loadMembers(){
+
+    const {data,error} =
+        await supabaseClient
+            .from("group_members")
+            .select(`
+                user_id,
+                group_rank,
+                group_tag,
+                is_co_leader,
+                profiles(
+                    id,
+                    username,
+                    display_name,
+                    avatar_url,
+                    site_role,
+                    is_verified,
+                    is_banned,
+                    is_suspended
+                )
+            `)
+            .eq("group_id",groupId);
+
+    if(error){
+
+        console.error(error);
+
+        groupMembers = [];
+
+        return;
+    }
+
+    groupMembers = data || [];
+}
+
+
+/* =========================
+   CHECK MEMBERSHIP
+========================= */
+
+function isGroupMember(){
+
+    return groupMembers.some(
+        member =>
+            member.user_id === currentUser.id
+    );
+}
+
+
+/* =========================
+   GROUP TAG
+========================= */
+
+function getGroupTag(member){
+
+    if(!member) return "";
+
+    if(member.group_tag){
+
+        return `
+            <span class="role">
+                [${esc(member.group_tag)}]
+            </span>
+        `;
+    }
+
+    if(member.is_co_leader){
+
+        return `
+            <span class="role">
+                [CO-LEADER]
+            </span>
+        `;
+    }
+
+    if(member.group_rank){
+
+        return `
+            <span class="role">
+                [${esc(member.group_rank)}]
+            </span>
+        `;
+    }
+
+    return "";
+}
+
+
+/* =========================
+   LOAD SHOUTS
+========================= */
+
+async function loadShouts(){
+
+    const container =
+        document.getElementById("shouts");
+
+    container.innerHTML =
+        "Loading shouts...";
+
+
+    /*
+       Group shouts are linked through
+       group_id.
+
+       If your current shouts table does
+       not yet have group_id, this query
+       will show an error until that column
+       is added.
+    */
+
+    const {data,error} =
+        await supabaseClient
+            .from("shouts")
+            .select(`
+                id,
+                user_id,
+                body,
+                likes_count,
+                created_at,
+                profiles(
+                    id,
+                    username,
+                    display_name,
+                    avatar_url,
+                    site_role,
+                    is_verified
+                )
+            `)
+            .eq("group_id",groupId)
+            .order("created_at",{
+                ascending:false
+            })
+            .limit(50);
+
+
+    if(error){
+
+        console.error(error);
+
+        container.innerHTML = `
+
+            <div class="notice">
+
+                <span class="error">
+                    Group shouts are not ready yet.
+                </span>
+
+                <br><br>
+
+                <span class="small">
+                    The shouts table needs a
+                    group_id column for group-specific
+                    shouts.
+                </span>
+
+            </div>
+
+        `;
+
+        return;
+    }
+
+
+    if(!data || !data.length){
+
+        container.innerHTML = `
+
+            <div class="small">
+                No group shouts yet.
+                Be the first to post one.
+            </div>
+
+        `;
+
+        return;
+    }
+
+
+    let html = "";
+
+
+    data.forEach(shout => {
+
+        const profile =
+            shout.profiles;
+
+        if(!profile) return;
+
+
+        const member =
+            groupMembers.find(
+                m =>
+                    m.user_id === shout.user_id
+            );
+
+
+        html += `
+
+            <div class="shout">
+
+                ${
+                    profile.avatar_url
+                    ?
+                    `<img
+                        class="avatar"
+                        src="${esc(
+                            profile.avatar_url
+                        )}"
+                        alt="">`
+                    :
+                    `<div class="avatar"></div>`
+                }
+
+
+                <a
+                    href="profile.html?id=${profile.id}">
+
+                    <b>
+                        ${esc(
+                            profile.display_name ||
+                            profile.username
+                        )}
+                    </b>
+
+                </a>
+
+                ${roleTag(profile)}
+
+                ${getGroupTag(member)}
+
+                ${
+                    profile.is_verified
+                    ?
+                    `<span class="site-role">
+                        ✓
+                    </span>`
+                    :
+                    ""
+                }
+
+                <br>
+
+                <span class="small">
+
+                    @${esc(profile.username)}
+
+                    ·
+
+                    ${formatDate(
+                        shout.created_at
+                    )}
+
+                </span>
+
+                <br><br>
+
+
+                ${esc(shout.body)
+                    .replace(/\n/g,"<br>")}
+
+
+                <br><br>
+
+
+                <span class="like">
+
+                    ♥
+                    ${Number(
+                        shout.likes_count || 0
+                    )}
+
+                </span>
+
+            </div>
+
+        `;
+    });
+
+
+    container.innerHTML = html;
+}
+
+
+/* =========================
+   CREATE SHOUT
+========================= */
+
+async function createShout(){
+
+    const textarea =
+        document.getElementById(
+            "shoutText"
+        );
+
+    const body =
+        textarea.value.trim();
+
+
+    if(!body){
+
+        showMessage(
+            "Write something first.",
+            true
+        );
+
+        return;
+    }
+
+
+    if(!isGroupMember()){
+
+        showMessage(
+            "You must be a member of this group to post group shouts.",
+            true
+        );
+
+        return;
+    }
+
+
+    textarea.disabled = true;
+
+
+    const {error} =
+        await supabaseClient
+            .from("shouts")
+            .insert({
+
+                user_id:
+                    currentUser.id,
+
+                body:body,
+
+                group_id:
+                    groupId
+
+            });
+
+
+    textarea.disabled = false;
+
+
+    if(error){
+
+        console.error(error);
+
+        showMessage(
+            "Your group shout could not be posted.",
+            true
+        );
+
+        return;
+    }
+
+
+    textarea.value = "";
+
+
+    await supabaseClient
+        .from("profiles")
+        .update({
+            last_active_at:
+                new Date().toISOString()
+        })
+        .eq("id",currentUser.id);
+
+
+    showMessage(
+        "Group shout posted.",
+        false
+    );
+
+
+    await loadShouts();
+}
+
+
+/* =========================
+   START
+========================= */
+
+async function start(){
+
+    if(!await checkAuth()){
+        return;
+    }
+
+
+    groupId =
+        getGroupId();
+
+
+    if(!groupId){
+
+        document.getElementById("groupInfo").innerHTML = `
+
+            <span class="error">
+                No group was selected.
+            </span>
+
+        `;
+
+        return;
+    }
+
+
+    if(!await loadGroup()){
+        return;
+    }
+
+
+    await loadMembers();
+
+
+    await loadShouts();
+}
+
+
+start();
+
+</script>
+
+</body>
+</html>
