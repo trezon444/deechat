@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeeChat - Group Panel</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    margin:0;
+    background:#f3f3e8;
+    color:#222;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+}
+a{color:#0645ad;text-decoration:none}
+a:hover{text-decoration:underline}
+.header{
+    background:#174a8b;
+    color:#fff;
+    padding:8px;
+    font-size:20px;
+    font-weight:bold;
+}
+.nav{
+    background:#fff3a6;
+    border-bottom:1px solid #d5c85b;
+    padding:6px;
+    line-height:1.8;
+}
+.nav a{margin-right:8px}
+.box{
+    background:#fff;
+    border:1px solid #ccc;
+    margin:8px;
+    padding:8px;
+}
+.title{
+    background:#ffe45c;
+    border:1px solid #d6c13b;
+    padding:6px;
+    font-weight:bold;
+    margin-bottom:7px;
+}
+input,textarea,select{
+    width:100%;
+    box-sizing:border-box;
+    padding:7px;
+    border:1px solid #aaa;
+    margin:3px 0 7px;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+}
+textarea{min-height:90px}
+button,.btn{
+    display:inline-block;
+    background:#174a8b;
+    color:#fff;
+    border:1px solid #0d315e;
+    padding:6px 9px;
+    margin:3px 2px;
+    cursor:pointer;
+}
+button:hover,.btn:hover{
+    background:#0d315e;
+    text-decoration:none;
+}
+.danger{
+    background:#a00000;
+    border-color:#700000;
+}
+.notice{
+    background:#fff8c7;
+    border:1px solid #ddd083;
+    padding:7px;
+}
+.member{
+    border-bottom:1px dotted #aaa;
+    padding:7px 0;
+}
+.avatar{
+    width:38px;
+    height:38px;
+    float:left;
+    margin-right:7px;
+    object-fit:cover;
+    background:#ddd;
+}
+.clear{clear:both}
+.role{
+    color:#8a5200;
+    font-size:11px;
+    font-weight:bold;
+}
+.site-role{
+    color:#174a8b;
+    font-size:11px;
+    font-weight:bold;
+}
+.small{
+    color:#666;
+    font-size:12px;
+}
+.success{
+    color:#087a21;
+    font-weight:bold;
+}
+.error{
+    color:#a00000;
+    font-weight:bold;
+}
+.feature{
+    display:inline-block;
+    background:#e8f1ff;
+    border:1px solid #b9cde8;
+    padding:3px 5px;
+    margin:2px;
+    font-size:12px;
+}
+.footer{
+    text-align:center;
+    color:#666;
+    padding:15px 5px;
+    font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">DeeChat - Group Panel</div>
+
+<div class="nav">
+    <a href="homepage.html">Home</a>
+    <a href="groups.html">Groups</a>
+    <a id="backGroup" href="groups.html">Group</a>
+    <a href="members.html">Members</a>
+</div>
+
+<div id="messageBox"></div>
+
+<div class="box">
+    <div class="title">Group Management</div>
+    <div id="groupHeader">Loading...</div>
+</div>
+
+<div class="box">
+    <div class="title">Group Settings</div>
+
+    <label>Group Name</label>
+    <input id="groupName">
+
+    <label>Abbreviation</label>
+    <input id="groupAbbreviation">
+
+    <label>Logo URL</label>
+    <input id="groupLogo">
+
+    <label>Description</label>
+    <textarea id="groupDescription"></textarea>
+
+    <label>Rules</label>
+    <textarea id="groupRules"></textarea>
+
+    <button onclick="saveSettings()">Save Settings</button>
+</div>
+
+<div class="box">
+    <div class="title">Enabled Group Features</div>
+    <div id="features">Loading...</div>
+</div>
+
+<div class="box">
+    <div class="title">Join Requests</div>
+    <div id="requests">Loading...</div>
+</div>
+
+<div class="box">
+    <div class="title">Leadership</div>
+    <div id="leadership">Loading...</div>
+</div>
+
+<div class="box">
+    <div class="title">Member Management</div>
+    <div id="members">Loading...</div>
+</div>
+
+<div class="box">
+    <div class="title">Create Custom Rank</div>
+
+    <label>Rank Name</label>
+    <input id="rankName" placeholder="Example: Officer">
+
+    <label>Rank Tag</label>
+    <input id="rankTag" placeholder="Example: OFFICER">
+
+    <button onclick="createRank()">Create Rank</button>
+
+    <div id="rankMessage"></div>
+</div>
+
+<div class="box">
+    <div class="title">Existing Custom Ranks</div>
+    <div id="ranks">Loading...</div>
+</div>
+
+<div class="footer">
+    © DeeChat 2026
+</div>
+
+<script>
+const SUPABASE_URL = "https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+let currentUser = null;
+let currentProfile = null;
+let groupId = null;
+let groupData = null;
+let members = [];
+let ranks = [];
+
+/* ---------- HELPERS ---------- */
+
+function esc(value){
+    return String(value ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+function formatDate(date){
+    if(!date) return "Unknown";
+
+    return new Date(date).toLocaleString([],{
+        year:"numeric",
+        month:"short",
+        day:"numeric"
+    });
+}
+
+function roleTag(profile){
+
+    if(!profile) return "";
+
+    const roles = {
+        owner:"OWNER",
+        super_admin:"SUPER ADMIN",
+        admin:"ADMIN",
+        head_mod:"HEAD MOD",
+        moderator:"MOD",
+        vip:"VIP",
+        verified_member:"VERIFIED",
+        member:"MEMBER",
+        new_member:"NEW MEMBER"
+    };
+
+    return `
+        <span class="site-role">
+            [${esc(roles[profile.site_role] ||
+            String(profile.site_role || "").toUpperCase())}]
+        </span>
+    `;
+}
+
+function groupTag(member){
+
+    if(member.group_tag){
+        return `<span class="role">[${esc(member.group_tag)}]</span>`;
+    }
+
+    if(member.is_co_leader){
+        return `<span class="role">[CO-LEADER]</span>`;
+    }
+
+    if(member.group_rank){
+        return `<span class="role">[${esc(member.group_rank)}]</span>`;
+    }
+
+    return "";
+}
+
+function getGroupId(){
+
+    const params =
+        new URLSearchParams(window.location.search);
+
+    return params.get("id");
+}
+
+/* ---------- AUTH ---------- */
+
+async function checkAuth(){
+
+    const {data,error} =
+        await supabaseClient.auth.getSession();
+
+    if(error || !data.session){
+        window.location.href="login.html";
+        return false;
+    }
+
+    currentUser=data.session.user;
+
+    const {data:profile} =
+        await supabaseClient
+            .from("profiles")
+            .select("*")
+            .eq("id",currentUser.id)
+            .single();
+
+    currentProfile=profile;
+
+    return true;
+}
+
+/* ---------- GROUP ---------- */
+
+async function loadGroup(){
+
+    const {data,error} =
+        await supabaseClient
+            .from("groups")
+            .select("*")
+            .eq("id",groupId)
+            .single();
+
+    if(error || !data){
+
+        showMessage(
+            "Group could not be loaded.",
+            true
+        );
+
+        return false;
+    }
+
+    groupData=data;
+
+    document.getElementById("backGroup").href =
+        "group.html?id="+groupId;
+
+    document.getElementById("groupName").value =
+        groupData.name || "";
+
+    document.getElementById("groupAbbreviation").value =
+        groupData.abbreviation || "";
+
+    document.getElementById("groupLogo").value =
+        groupData.logo_url || "";
+
+    document.getElementById("groupDescription").value =
+        groupData.description || "";
+
+    document.getElementById("groupRules").value =
+        groupData.rules || "";
+
+    document.getElementById("groupHeader").innerHTML = `
+        <b>${esc(groupData.name)}</b>
+        ${
+            groupData.abbreviation
+            ? " ["+esc(groupData.abbreviation)+"]"
+            : ""
+        }
+        <br>
+        <span class="small">
+            Created ${formatDate(groupData.created_at)}
+        </span>
+    `;
+
+    return true;
+}
+
+/* ---------- AUTHORIZATION UI ---------- */
+
+async function checkManager(){
+
+    if(!currentProfile){
+        return false;
+    }
+
+    const siteRole =
+        currentProfile.site_role;
+
+    if(
+        siteRole === "owner" ||
+        siteRole === "super_admin" ||
+        siteRole === "admin"
+    ){
+        return true;
+    }
+
+    const {data} =
+        await supabaseClient
+            .from("group_members")
+            .select("*")
+            .eq("group_id",groupId)
+            .eq("user_id",currentUser.id)
+            .maybeSingle();
+
+    if(!data){
+        return false;
+    }
+
+    return (
+        data.is_co_leader === true ||
+        data.user_id === groupData.leader_id
+    );
+}
+
+/* ---------- MEMBERS ---------- */
+
+async function loadMembers(){
+
+    const {data,error} =
+        await supabaseClient
+            .from("group_members")
+            .select(`
+                user_id,
+                group_rank,
+                group_tag,
+                is_co_leader,
+                joined_at,
+                profiles(
+                    id,
+                    username,
+                    display_name,
+                    avatar_url,
+                    site_role,
+                    is_verified
+                )
+            `)
+            .eq("group_id",groupId)
+            .order("joined_at",{ascending:true});
+
+    if(error){
+
+        console.error(error);
+
+        document.getElementById("members").innerHTML =
+            `<span class="error">
+                Unable to load members.
+             </span>`;
+
+        return;
+    }
+
+    members=data || [];
+
+    renderMembers();
+    renderLeadership();
+}
+
+/* ---------- MEMBER LIST ---------- */
+
+function renderMembers(){
+
+    if(!members.length){
+
+        document.getElementById("members").innerHTML =
+            "No members yet.";
+
+        return;
+    }
+
+    let html="";
+
+    members.forEach(member=>{
+
+        const p=member.profiles;
+
+        if(!p) return;
+
+        const isLeader =
+            member.user_id === groupData.leader_id;
+
+        html += `
+            <div class="member">
+
+                ${
+                    p.avatar_url
+                    ? `<img class="avatar"
+                             src="${esc(p.avatar_url)}">`
+                    : `<div class="avatar"></div>`
+                }
+
+                <a href="profile.html?id=${p.id}">
+                    <b>
+                        ${esc(
+                            p.display_name ||
+                            p.username
+                        )}
+                    </b>
+                </a>
+
+                ${roleTag(p)}
+                ${groupTag(member)}
+
+                <br>
+
+                <span class="small">
+                    @${esc(p.username)}
+                </span>
+
+                ${
+                    isLeader
+                    ? `<br>
+                       <span class="role">
+                       GROUP LEADER
+                       </span>`
+                    : `
+                        <br>
+
+                        <select
+                          id="rank_${member.user_id}"
+                          onchange="changeRank('${member.user_id}')">
+
+                            <option value="">
+                                Select Rank
+                            </option>
+
+                            ${rankOptions(
+                                member.group_rank
+                            )}
+
+                        </select>
+
+                        <button
+                          onclick="toggleCoLeader('${member.user_id}')">
+                          ${
+                              member.is_co_leader
+                              ? "Remove Co-Leader"
+                              : "Make Co-Leader"
+                          }
+                        </button>
+
+                        <button
+                          class="danger"
+                          onclick="removeMember('${member.user_id}')">
+                          Remove
+                        </button>
+                    `
+                }
+
+                <div class="clear"></div>
+            </div>
+        `;
+    });
+
+    document.getElementById("members").innerHTML=html;
+}
+
+/* ---------- RANK OPTIONS ---------- */
+
+function rankOptions(current){
+
+    let html="";
+
+    ranks.forEach(rank=>{
+
+        html += `
+            <option
+                value="${esc(rank.name)}"
+                ${current===rank.name ? "selected":""}>
+                ${esc(rank.name)}
+            </option>
+        `;
+    });
+
+    return html;
+}
+
+/* ---------- LEADERSHIP ---------- */
+
+function renderLeadership(){
+
+    const leaders =
+        members.filter(m =>
+            m.user_id === groupData.leader_id ||
+            m.is_co_leader
+        );
+
+    if(!leaders.length){
+
+        document.getElementById("leadership").innerHTML =
+            "No leadership members found.";
+
+        return;
+    }
+
+    let html="";
+
+    leaders.forEach(member=>{
+
+        const p=member.profiles;
+
+        if(!p) return;
+
+        let title =
+            member.user_id === groupData.leader_id
+            ? "GROUP LEADER"
+            : "CO-LEADER";
+
+        html += `
+            <div class="member">
+
+                <a href="profile.html?id=${p.id}">
+                    <b>
+                        ${esc(
+                            p.display_name ||
+                            p.username
+                        )}
+                    </b>
+                </a>
+
+                ${roleTag(p)}
+
+                <br>
+
+                <span class="role">
+                    [${title}]
+                </span>
+
+                ${groupTag(member)}
+            </div>
+        `;
+    });
+
+    document.getElementById("leadership").innerHTML=html;
+}
+
+/* ---------- SAVE SETTINGS ---------- */
+
+async function saveSettings(){
+
+    const name =
+        document.getElementById("groupName").value.trim();
+
+    if(!name){
+
+        showMessage(
+            "Group name cannot be empty.",
+            true
+        );
+
+        return;
+    }
+
+    const {error} =
+        await supabaseClient
+            .from("groups")
+            .update({
+                name:name,
+                abbreviation:
+                    document
+                        .getElementById("groupAbbreviation")
+                        .value
+                        .trim(),
+
+                logo_url:
+                    document
+                        .getElementById("groupLogo")
+                        .value
+                        .trim(),
+
+                description:
+                    document
+                        .getElementById("groupDescription")
+                        .value
+                        .trim(),
+
+                rules:
+                    document
+                        .getElementById("groupRules")
+                        .value
+                        .trim()
+            })
+            .eq("id",groupId);
+
+    if(error){
+
+        console.error(error);
+
+        showMessage(
+            "Settings could not be saved.",
+            true
+        );
+
+        return;
+    }
+
+    showMessage(
+        "Group settings saved successfully.",
+        false
+    );
+
+    await loadGroup();
+}
+
+/* ---------- FEATURES ---------- */
+
+const featureNames = {
+    member_management:"Member Management",
+    rank_management:"Rank Management",
+    leadership_management:"Leadership Management",
+    join_requests:"Join Requests",
+    group_chat:"Group Chat",
+    group_shouts:"Group Shouts",
+    group_topics:"Group Topics",
+    announcements:"Announcements",
+    voting:"Group Voting",
+    activities:"Group Activities",
+    awards:"Group Awards",
+    statistics:"Group Statistics",
+    rules:"Group Rules",
+    notifications:"Group Notifications",
+    member_restrictions:"Member Restrictions",
+    reports:"Group Reports"
+};
+
+function renderFeatures(){
+
+    const features =
+        groupData.enabled_features || {};
+
+    let html="";
+
+    Object.keys(featureNames).forEach(key=>{
+
+        const enabled =
+            Array.isArray(features)
+            ? features.includes(key)
+            : features[key] === true;
+
+        html += `
+            <label style="display:block;margin:5px 0;">
+                <input
+                    type="checkbox"
+                    id="feature_${key}"
+                    ${enabled ? "checked":""}
+                    style="width:auto;">
+                ${esc(featureNames[key])}
+            </label>
+        `;
+    });
+
+    html += `
+        <button onclick="saveFeatures()">
+            Save Features
+        </button>
+    `;
+
+    document.getElementById("features").innerHTML=html;
+}
+
+async function saveFeatures(){
+
+    const result={};
+
+    Object.keys(featureNames).forEach(key=>{
+
+        const checkbox =
+            document.getElementById(
+                "feature_"+key
+            );
+
+        result[key]=checkbox.checked;
+    });
+
+    const {error} =
+        await supabaseClient
+            .from("groups")
+            .update({
+                enabled_features:result
+            })
+            .eq("id",groupId);
+
+    if(error){
+
+        console.error(error);
+
+        showMessage(
+            "Features could not be saved.",
+            true
+        );
+
+        return;
+    }
+
+    groupData.enabled_features=result;
+
+    showMessage(
+        "Group features updated.",
+        false
+    );
+}
+
+/* ---------- JOIN REQUESTS ---------- */
+
+async function loadRequests(){
+
+    const {data,error} =
+        await supabaseClient
+            .from("group_join_requests")
+            .select(`
+                id,
+                user_id,
+                status,
+                created_at,
+                profiles(
+                    username,
+                    display_name,
+                    avatar_url,
+                    site_role
+                )
+            `)
+            .eq("group_id",groupId)
+            .eq("status","pending")
+            .order("created_at",{ascending:true});
+
+    if(error){
+
+        document.getElementById("requests").innerHTML =
+            `<span class="error">
+                Unable to load requests.
+             </span>`;
+
+        return;
+    }
+
+    if(!data || !data.length){
+
+        document.getElementById("requests").innerHTML =
+            `<span class="small">
+                No pending join requests.
+             </span>`;
+
+        return;
+    }
+
+    let html="";
+
+    data.forEach(request=>{
+
+        const p=request.profiles;
+
+        if(!p) return;
+
+        html += `
+            <div class="member">
+
+                <a href="profile.html?id=${request.user_id}">
+                    <b>
+                        ${esc(
+                            p.display_name ||
+                            p.username
+                        )}
+                    </b>
+                </a>
+
+                ${roleTag(p)}
+
+                <br>
+
+                <span class="small">
+                    Requested ${formatDate(request.created_at)}
+                </span>
+
+                <br>
+
+                <button
+                  onclick="approveRequest('${request.id}','${request.user_id}')">
+                  Approve
+                </button>
+
+                <button
+                  class="danger"
+                  onclick="rejectRequest('${request.id}')">
+                  Reject
+                </button>
+            </div>
+        `;
+    });
+
+    document.getElementById("requests").innerHTML=html;
+}
+
+/* ---------- APPROVE ---------- */
+
+async function approveRequest(requestId,userId){
+
+    const {error:memberError} =
+        await supabaseClient
+            .from("group_members")
+            .insert({
+                group_id:groupId,
+                user_id:userId,
+                group_rank:"Member",
+                group_tag:"MEMBER",
+                is_co_leader:false
+            });
+
+    if(memberError){
+
+        console.error(memberError);
+
+        showMessage(
+            "Could not add member.",
+            true
+        );
+
+        return;
+    }
+
+    const {error} =
+        await supabaseClient
+            .from("group_join_requests")
+            .update({
+                status:"approved"
+            })
+            .eq("id",requestId);
+
+    if(error){
+
+        console.error(error);
+
+        showMessage(
+            "Member was added but request status could not be updated.",
+            true
+        );
+
+        return;
+    }
+
+    showMessage(
+    
