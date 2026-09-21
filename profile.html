@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile - DeeChat</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    margin:0;
+    background:#eaf7ff;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+    color:#222;
+}
+
+a{
+    color:#0645ad;
+    text-decoration:none;
+}
+
+a:hover{
+    text-decoration:underline;
+}
+
+.header{
+    background:#1683c7;
+    color:white;
+    padding:10px;
+    font-size:20px;
+    font-weight:bold;
+}
+
+.nav{
+    background:#d8efff;
+    padding:7px;
+    border-bottom:1px solid #9acbe8;
+    line-height:25px;
+}
+
+.box{
+    margin:8px;
+    border:1px solid #b5cddd;
+    background:white;
+}
+
+.title{
+    background:#ffd83d;
+    padding:7px;
+    font-weight:bold;
+}
+
+.content{
+    padding:8px;
+}
+
+.profile-head{
+    text-align:center;
+    padding:10px;
+}
+
+.avatar{
+    width:80px;
+    height:80px;
+    border-radius:50%;
+    background:#ddd;
+    object-fit:cover;
+    display:block;
+    margin:0 auto 8px;
+}
+
+.name{
+    font-size:20px;
+    font-weight:bold;
+}
+
+.username{
+    color:#777;
+    font-size:12px;
+}
+
+.role{
+    display:inline-block;
+    background:#eee;
+    border:1px solid #ccc;
+    padding:2px 5px;
+    font-size:10px;
+    margin-left:3px;
+}
+
+.owner{
+    background:#ffd700;
+    color:#000;
+    border-color:#c5a900;
+}
+
+.staff{
+    background:#cceeff;
+    color:#005580;
+}
+
+.verified{
+    color:#008000;
+    font-weight:bold;
+}
+
+.online{
+    color:#008000;
+    font-weight:bold;
+    margin-top:5px;
+}
+
+.offline{
+    color:#888;
+    margin-top:5px;
+}
+
+.bio{
+    white-space:pre-wrap;
+    line-height:1.5;
+}
+
+.info{
+    border-bottom:1px solid #ddd;
+    padding:7px 0;
+}
+
+.info:last-child{
+    border-bottom:0;
+}
+
+.label{
+    font-weight:bold;
+}
+
+.stat{
+    display:inline-block;
+    width:48%;
+    box-sizing:border-box;
+    padding:8px;
+    text-align:center;
+    border:1px solid #ddd;
+    margin-bottom:5px;
+    background:#f8fcff;
+}
+
+.stat-number{
+    display:block;
+    font-size:18px;
+    font-weight:bold;
+    color:#1683c7;
+}
+
+.badge{
+    display:inline-block;
+    background:#fff3b0;
+    border:1px solid #e0c84a;
+    padding:4px 6px;
+    margin:3px;
+    font-size:12px;
+}
+
+.button{
+    display:inline-block;
+    background:#1683c7;
+    color:white;
+    padding:7px 12px;
+    margin:3px 2px;
+}
+
+.button:hover{
+    color:white;
+    text-decoration:none;
+}
+
+.error{
+    color:#b00000;
+    padding:8px;
+}
+
+.small{
+    color:#777;
+    font-size:12px;
+}
+
+.footer{
+    text-align:center;
+    padding:15px 8px;
+    color:#777;
+    font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">👤 DeeChat</div>
+
+<div class="nav">
+    <a href="homepage.html">Home</a> |
+    <a href="shouts.html">Shouts</a> |
+    <a href="topics.html">Topics</a> |
+    <a href="members.html">Members</a> |
+    <a href="groups.html">Groups</a>
+</div>
+
+<div id="message"></div>
+
+<div class="box">
+
+    <div class="title">Member Profile</div>
+
+    <div class="content profile-head" id="profileHead">
+        Loading profile...
+    </div>
+
+</div>
+
+
+<div class="box">
+
+    <div class="title">About</div>
+
+    <div class="content" id="about">
+        Loading...
+    </div>
+
+</div>
+
+
+<div class="box">
+
+    <div class="title">Member Stats</div>
+
+    <div class="content" id="stats">
+        Loading...
+    </div>
+
+</div>
+
+
+<div class="box">
+
+    <div class="title">Badges</div>
+
+    <div class="content" id="badges">
+        No badges yet.
+    </div>
+
+</div>
+
+
+<div class="box">
+
+    <div class="title">Activity</div>
+
+    <div class="content" id="activity">
+        Loading...
+    </div>
+
+</div>
+
+
+<div class="footer">
+    © 2026 DeeChat
+</div>
+
+
+<script>
+
+const SUPABASE_URL =
+"https://sqikfejouaxizvidivcg.supabase.co";
+
+const SUPABASE_KEY =
+"sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+let currentUser = null;
+let profileUser = null;
+
+
+/* ESCAPE */
+
+function escapeHTML(value){
+
+    return String(value ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+
+/* ROLE */
+
+function roleTag(profile){
+
+    if(!profile) return "";
+
+    const role =
+        profile.site_role;
+
+    if(role === "owner"){
+        return `<span class="role owner">
+            OWNER
+        </span>`;
+    }
+
+    if(role === "super_admin"){
+        return `<span class="role staff">
+            SUPER ADMIN
+        </span>`;
+    }
+
+    if(role === "admin"){
+        return `<span class="role staff">
+            ADMIN
+        </span>`;
+    }
+
+    if(role === "head_mod"){
+        return `<span class="role staff">
+            HEAD MOD
+        </span>`;
+    }
+
+    if(role === "moderator"){
+        return `<span class="role staff">
+            MOD
+        </span>`;
+    }
+
+    if(role === "vip"){
+        return `<span class="role staff">
+            VIP
+        </span>`;
+    }
+
+    if(role === "verified_member"){
+        return `<span class="role staff">
+            VERIFIED
+        </span>`;
+    }
+
+    return "";
+}
+
+
+/* ONLINE */
+
+function isOnline(lastActive){
+
+    if(!lastActive) return false;
+
+    return (
+        Date.now() -
+        new Date(lastActive).getTime()
+    ) <= 5 * 60 * 1000;
+}
+
+
+/* DATE */
+
+function formatDate(date){
+
+    if(!date) return "Unknown";
+
+    return new Date(date)
+        .toLocaleDateString();
+}
+
+
+/* GET PROFILE ID */
+
+function getProfileId(){
+
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+    return params.get("id");
+}
+
+
+/* LOGIN */
+
+async function checkLogin(){
+
+    const {
+        data,
+        error
+    } =
+    await supabaseClient.auth.getSession();
+
+    if(error || !data.session){
+
+        window.location.href =
+            "login.html";
+
+        return false;
+    }
+
+    currentUser =
+        data.session.user;
+
+    return true;
+}
+
+
+/* LOAD PROFILE */
+
+async function loadProfile(){
+
+    let profileId =
+        getProfileId();
+
+    /*
+      If no ID is supplied,
+      show the logged-in user's profile.
+    */
+
+    if(!profileId){
+
+        profileId =
+            currentUser.id;
+    }
+
+
+    const {
+        data,
+        error
+    } =
+    await supabaseClient
+    .from("profiles")
+    .select(`
+        id,
+        username,
+        display_name,
+        bio,
+        avatar_url,
+        status_text,
+        site_role,
+        points,
+        badges,
+        is_verified,
+        is_banned,
+        is_suspended,
+        last_active_at,
+        created_at
+    `)
+    .eq("id",profileId)
+    .single();
+
+
+    if(error || !data){
+
+        document.getElementById(
+            "profileHead"
+        ).innerHTML =
+        `<div class="error">
+            Profile not found.
+        </div>`;
+
+        return;
+    }
+
+
+    profileUser = data;
+
+
+    renderProfile(data);
+
+    loadStats(data.id);
+
+}
+
+
+/* RENDER PROFILE */
+
+function renderProfile(profile){
+
+    const online =
+        isOnline(profile.last_active_at);
+
+
+    const avatar =
+        profile.avatar_url
+        ?
+        `<img
+            class="avatar"
+            src="${escapeHTML(profile.avatar_url)}"
+            alt="Avatar"
+        >`
+        :
+        `<div
+            class="avatar"
+            style="line-height:80px;text-align:center;"
+        >
+            👤
+        </div>`;
+
+
+    const verified =
+        profile.is_verified
+        ?
+        `<span class="verified">
+            ✔ Verified
+        </span>`
+        :
+        "";
+
+
+    const status =
+        online
+        ?
+        `<div class="online">
+            ● Online
+        </div>`
+        :
+        `<div class="offline">
+            ○ Offline
+        </div>`;
+
+
+    const isMe =
+        profile.id === currentUser.id;
+
+
+    document.getElementById(
+        "profileHead"
+    ).innerHTML = `
+
+        ${avatar}
+
+        <div class="name">
+
+            ${escapeHTML(
+                profile.display_name ||
+                profile.username ||
+                "DeeChat Member"
+            )}
+
+        </div>
+
+        <div class="username">
+            @${escapeHTML(
+                profile.username || ""
+            )}
+
+            ${roleTag(profile)}
+
+            ${verified}
+        </div>
+
+        ${status}
+
+        <div class="small">
+            Joined
+            ${formatDate(profile.created_at)}
+        </div>
+
+        <div style="margin-top:8px;">
+
+            ${
+                isMe
+                ?
+                `<a
+                    class="button"
+                    href="settings.html"
+                >
+                    Edit Profile
+                </a>`
+                :
+                `<a
+                    class="button"
+                    href="messages.html?user=${profile.id}"
+                >
+                    Message
+                </a>
+                `
+            }
+
+        </div>
+    `;
+
+
+    document.getElementById(
+        "about"
+    ).innerHTML = `
+
+        ${
+            profile.status_text
+            ?
+            `<div class="info">
+                <span class="label">
+                    Status:
+                </span>
+                ${escapeHTML(
+                    profile.status_text
+                )}
+            </div>`
+            :
+            ""
+        }
+
+        <div class="bio">
+
+            ${
+                profile.bio
+                ?
+                escapeHTML(profile.bio)
+                :
+                `<span class="small">
+                    This member has not added a bio yet.
+                </span>`
+            }
+
+        </div>
+
+    `;
+
+
+    renderBadges(profile.badges);
+}
+
+
+/* BADGES */
+
+function renderBadges(badges){
+
+    const container =
+        document.getElementById("badges");
+
+
+    if(!badges){
+
+        container.innerHTML =
+        `<span class="small">
+            No badges yet.
+        </span>`;
+
+        return;
+    }
+
+
+    let badgeList = [];
+
+
+    if(Array.isArray(badges)){
+        badgeList = badges;
+    }
+    else if(typeof badges === "object"){
+        badgeList =
+            Object.values(badges);
+    }
+
+
+    if(badgeList.length === 0){
+
+        container.innerHTML =
+        `<span class="small">
+            No badges yet.
+        </span>`;
+
+        return;
+    }
+
+
+    container.innerHTML =
+        badgeList.map(badge =>
+            `<span class="badge">
+                🏅 ${escapeHTML(badge)}
+            </span>`
+        ).join("");
+}
+
+
+/* STATS */
+
+async function loadStats(userId){
+
+    const [
+        shoutsResult,
+        topicsResult,
+        repliesResult
+    ] =
+    await Promise.all([
+
+        supabaseClient
+        .from("shouts")
+        .select("id",{
+            count:"exact",
+            head:true
+        })
+        .eq("user_id",userId),
+
+        supabaseClient
+        .from("topics")
+        .select("id",{
+            count:"exact",
+            head:true
+        })
+        .eq("user_id",userId),
+
+        supabaseClient
+        .from("topic_replies")
+        .select("id",{
+            count:"exact",
+            head:true
+        })
+        .eq("user_id",userId)
+
+    ]);
+
+
+    const shouts =
+        shoutsResult.count || 0;
+
+    const topics =
+        topicsResult.count || 0;
+
+    const replies =
+        repliesResult.count || 0;
+
+
+    document.getElementById(
+        "stats"
+    ).innerHTML = `
+
+        <div class="stat">
+            <span class="stat-number">
+                ${profileUser.points || 0}
+            </span>
+            Points
+        </div>
+
+        <div class="stat">
+            <span class="stat-number">
+                ${shouts}
+            </span>
+            Shouts
+        </div>
+
+        <div class="stat">
+            <span class="stat-number">
+                ${topics}
+            </span>
+            Topics
+        </div>
+
+        <div class="stat">
+            <span class="stat-number">
+                ${replies}
+            </span>
+            Replies
+        </div>
+
+    `;
+
+
+    document.getElementById(
+        "activity"
+    ).innerHTML = `
+
+        <div class="info">
+            ⭐ Points:
+            <b>${profileUser.points || 0}</b>
+        </div>
+
+        <div class="info">
+            📢 Shouts:
+            <b>${shouts}</b>
+        </div>
+
+        <div class="info">
+            📝 Topics:
+            <b>${topics}</b>
+        </div>
+
+        <div class="info">
+            💬 Replies:
+            <b>${replies}</b>
+        </div>
+
+        <div class="info">
+            🕒 Last active:
+            <b>
+                ${
+                    profileUser.last_active_at
+                    ?
+                    new Date(
+                        profileUser.last_active_at
+                    ).toLocaleString()
+                    :
+                    "Unknown"
+                }
+            </b>
+        </div>
+
+    `;
+}
+
+
+/* START */
+
+(async function(){
+
+    const loggedIn =
+        await checkLogin();
+
+    if(!loggedIn) return;
+
+    loadProfile();
+
+})();
+
+</script>
+
+</body>
+</html>
