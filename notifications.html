@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Notifications - DeeChat</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    margin:0;
+    background:#eaf7ff;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+    color:#222;
+}
+a{
+    color:#0645ad;
+    text-decoration:none;
+}
+.header{
+    background:#1683c7;
+    color:white;
+    padding:10px;
+    font-size:20px;
+    font-weight:bold;
+}
+.nav{
+    background:#d8efff;
+    padding:7px;
+    line-height:25px;
+    border-bottom:1px solid #9acbe8;
+}
+.box{
+    margin:8px;
+    border:1px solid #b5cddd;
+    background:white;
+}
+.title{
+    background:#ffd83d;
+    padding:7px;
+    font-weight:bold;
+}
+.content{
+    padding:8px;
+}
+.notification{
+    border-bottom:1px solid #ddd;
+    padding:9px 3px;
+}
+.notification:last-child{
+    border-bottom:0;
+}
+.unread{
+    background:#eefaff;
+    border-left:4px solid #1683c7;
+    padding-left:6px;
+}
+.icon{
+    font-size:18px;
+    margin-right:5px;
+}
+.notification-title{
+    font-weight:bold;
+}
+.notification-body{
+    margin-top:3px;
+    line-height:1.4;
+}
+.meta{
+    color:#777;
+    font-size:11px;
+    margin-top:4px;
+}
+button{
+    background:#1683c7;
+    color:white;
+    border:0;
+    padding:7px 12px;
+    margin-right:4px;
+}
+button:disabled{
+    background:#999;
+}
+.small{
+    color:#777;
+    font-size:12px;
+}
+.error{
+    color:#b00000;
+    padding:7px;
+}
+.success{
+    color:#008000;
+    padding:7px;
+}
+.footer{
+    text-align:center;
+    padding:15px 8px;
+    color:#777;
+    font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">🔔 DeeChat Notifications</div>
+
+<div class="nav">
+<a href="homepage.html">Home</a> |
+<a href="shouts.html">Shouts</a> |
+<a href="topics.html">Topics</a> |
+<a href="members.html">Members</a> |
+<a href="groups.html">Groups</a> |
+<a href="messages.html">Messages</a>
+</div>
+
+<div id="message"></div>
+
+<div class="box">
+
+<div class="title">Notifications</div>
+
+<div class="content">
+
+<button id="readAllBtn">
+Mark All Read
+</button>
+
+<button id="refreshBtn">
+Refresh
+</button>
+
+</div>
+
+</div>
+
+
+<div class="box">
+
+<div class="title">
+Your Alerts
+</div>
+
+<div class="content" id="notifications">
+Loading notifications...
+</div>
+
+</div>
+
+
+<div class="footer">
+© 2026 DeeChat
+</div>
+
+
+<script>
+
+const SUPABASE_URL =
+"https://sqikfejouaxizvidivcg.supabase.co";
+
+const SUPABASE_KEY =
+"sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
+
+let currentUser=null;
+
+
+/* ESCAPE */
+
+function escapeHTML(value){
+
+return String(value ?? "")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+
+}
+
+
+/* ICON */
+
+function notificationIcon(type){
+
+if(!type) return "🔔";
+
+const t=type.toLowerCase();
+
+if(t.includes("message"))
+return "💬";
+
+if(t.includes("reply"))
+return "↩️";
+
+if(t.includes("like"))
+return "❤️";
+
+if(t.includes("follow"))
+return "👤";
+
+if(t.includes("group"))
+return "👥";
+
+if(t.includes("topic"))
+return "📝";
+
+if(t.includes("moderation"))
+return "🛡️";
+
+if(t.includes("admin"))
+return "⚙️";
+
+if(t.includes("badge"))
+return "🏅";
+
+return "🔔";
+
+}
+
+
+/* LOGIN */
+
+async function checkLogin(){
+
+const {data,error} =
+await supabaseClient.auth.getSession();
+
+if(error || !data.session){
+
+window.location.href="login.html";
+
+return false;
+
+}
+
+currentUser=data.session.user;
+
+return true;
+
+}
+
+
+/* LOAD */
+
+async function loadNotifications(){
+
+const container=
+document.getElementById("notifications");
+
+container.innerHTML=
+"Loading notifications...";
+
+
+const {data,error} =
+await supabaseClient
+.from("notifications")
+.select(`
+id,
+type,
+title,
+body,
+is_read,
+created_at
+`)
+.eq("user_id",currentUser.id)
+.order("created_at",{ascending:false})
+.limit(100);
+
+
+if(error){
+
+container.innerHTML=
+`<div class="error">
+Could not load notifications.
+</div>`;
+
+console.error(error);
+
+return;
+
+}
+
+
+if(!data || data.length===0){
+
+container.innerHTML=
+`<div class="small">
+You have no notifications yet.
+</div>`;
+
+return;
+
+}
+
+
+container.innerHTML=
+data.map(notification=>{
+
+const unread=
+!notification.is_read;
+
+return `
+
+<div class="notification ${unread?"unread":""}">
+
+<div>
+
+<span class="icon">
+${notificationIcon(
+notification.type
+)}
+</span>
+
+<span class="notification-title">
+${escapeHTML(
+notification.title ||
+"Notification"
+)}
+</span>
+
+</div>
+
+<div class="notification-body">
+
+${escapeHTML(
+notification.body || ""
+)}
+
+</div>
+
+<div class="meta">
+
+${new Date(
+notification.created_at
+).toLocaleString()}
+
+${unread ? " • Unread" : " • Read"}
+
+</div>
+
+${
+unread
+?
+`<button
+style="margin-top:5px;"
+onclick="markRead('${notification.id}')"
+>
+Mark Read
+</button>`
+:
+""
+}
+
+</div>
+
+`;
+
+}).join("");
+
+}
+
+
+/* MARK ONE READ */
+
+async function markRead(id){
+
+const {error} =
+await supabaseClient
+.from("notifications")
+.update({
+is_read:true
+})
+.eq("id",id)
+.eq("user_id",currentUser.id);
+
+
+if(error){
+
+document.getElementById("message")
+.innerHTML=
+`<div class="error">
+Could not mark notification as read.
+</div>`;
+
+return;
+
+}
+
+loadNotifications();
+
+}
+
+
+/* MARK ALL */
+
+document.getElementById("readAllBtn")
+.addEventListener("click",async function(){
+
+this.disabled=true;
+this.innerText="Updating...";
+
+
+const {error} =
+await supabaseClient
+.from("notifications")
+.update({
+is_read:true
+})
+.eq("user_id",currentUser.id)
+.eq("is_read",false);
+
+
+if(error){
+
+document.getElementById("message")
+.innerHTML=
+`<div class="error">
+Could not update notifications.
+</div>`;
+
+this.disabled=false;
+this.innerText="Mark All Read";
+
+return;
+
+}
+
+
+document.getElementById("message")
+.innerHTML=
+`<div class="success">
+All notifications marked as read.
+</div>`;
+
+this.disabled=false;
+this.innerText="Mark All Read";
+
+loadNotifications();
+
+});
+
+
+/* REFRESH */
+
+document.getElementById("refreshBtn")
+.addEventListener("click",loadNotifications);
+
+
+/* START */
+
+(async function(){
+
+const loggedIn=
+await checkLogin();
+
+if(!loggedIn) return;
+
+await loadNotifications();
+
+})();
+
+</script>
+
+</body>
+</html>
