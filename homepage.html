@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>DeeChat - Home</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #eaf4ff;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: #333;
+}
+
+.header {
+    background: #1769aa;
+    color: white;
+    padding: 10px;
+}
+
+.logo {
+    font-size: 21px;
+    font-weight: bold;
+}
+
+.userbar {
+    margin-top: 4px;
+    font-size: 12px;
+}
+
+.nav {
+    background: white;
+    border-bottom: 1px solid #b7cde2;
+    padding: 7px;
+    line-height: 1.8;
+}
+
+.nav a {
+    color: #075aaa;
+    text-decoration: none;
+    margin-right: 8px;
+}
+
+.box {
+    margin: 8px;
+    background: white;
+    border: 1px solid #b7cde2;
+}
+
+.title {
+    background: #ffe45c;
+    padding: 7px;
+    font-weight: bold;
+}
+
+.content {
+    padding: 8px;
+}
+
+.welcome {
+    color: #1769aa;
+    font-weight: bold;
+}
+
+.member {
+    padding: 7px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.member:last-child {
+    border-bottom: 0;
+}
+
+.tag {
+    display: inline-block;
+    background: #1769aa;
+    color: white;
+    padding: 2px 4px;
+    font-size: 10px;
+    margin-left: 3px;
+}
+
+.owner {
+    background: #c40000;
+}
+
+.online {
+    color: green;
+    font-weight: bold;
+}
+
+.link {
+    color: #075aaa;
+    text-decoration: none;
+}
+
+.small {
+    color: #777;
+    font-size: 11px;
+}
+
+.footer {
+    text-align: center;
+    padding: 15px 8px;
+    color: #777;
+    font-size: 11px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+
+<div class="header">
+
+    <div class="logo">
+        DeeChat
+    </div>
+
+    <div class="userbar">
+        Logged in as:
+        <span id="currentUser">Loading...</span>
+    </div>
+
+</div>
+
+
+<!-- NAVIGATION -->
+
+<div class="nav">
+
+    <a href="homepage.html">Home</a>
+
+    <a href="shouts.html">Shouts</a>
+
+    <a href="#">Topics</a>
+
+    <a href="#">Chat</a>
+
+    <a href="#">Members</a>
+
+    <a href="#">Groups</a>
+
+    <a href="#">Profile</a>
+
+    <a href="#" id="logout">Logout</a>
+
+</div>
+
+
+<!-- WELCOME -->
+
+<div class="box">
+
+    <div class="title">
+        Welcome to DeeChat
+    </div>
+
+    <div class="content">
+
+        <div class="welcome">
+            Welcome,
+            <span id="welcomeName">
+                Member
+            </span>!
+        </div>
+
+        <p>
+            Welcome to the DeeChat community.
+        </p>
+
+        <p>
+            Chat, meet members, create topics,
+            join groups and share shouts.
+        </p>
+
+    </div>
+
+</div>
+
+
+<!-- ACCOUNT -->
+
+<div class="box">
+
+    <div class="title">
+        My Account
+    </div>
+
+    <div class="content">
+
+        <div class="member">
+            Username:
+            <strong id="username">
+                Loading...
+            </strong>
+        </div>
+
+        <div class="member">
+            Rank:
+            <span id="role">
+                Loading...
+            </span>
+        </div>
+
+        <div class="member">
+            Points:
+            <strong id="points">
+                0
+            </strong>
+        </div>
+
+        <div class="member">
+            Status:
+            <span class="online">
+                ● Online
+            </span>
+        </div>
+
+        <div class="member">
+            <a class="link" href="#">
+                View My Profile
+            </a>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- COMMUNITY -->
+
+<div class="box">
+
+    <div class="title">
+        DeeChat Community
+    </div>
+
+    <div class="content">
+
+        <div class="member">
+            💬
+            <a class="link" href="#">
+                Chat Rooms
+            </a>
+        </div>
+
+        <div class="member">
+            📢
+            <a class="link" href="shouts.html">
+                Shouts
+            </a>
+        </div>
+
+        <div class="member">
+            📝
+            <a class="link" href="#">
+                Topics
+            </a>
+        </div>
+
+        <div class="member">
+            👥
+            <a class="link" href="#">
+                Online Members
+            </a>
+        </div>
+
+        <div class="member">
+            ⭐
+            <a class="link" href="#">
+                Groups
+            </a>
+        </div>
+
+        <div class="member">
+            🏆
+            <a class="link" href="#">
+                Leaderboard
+            </a>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- HIGHLIGHTS -->
+
+<div class="box">
+
+    <div class="title">
+        Today's Highlights
+    </div>
+
+    <div class="content">
+
+        <div class="member">
+            🔥
+            <a class="link" href="#">
+                Topic of the Day
+            </a>
+
+            <div class="small">
+                Most liked topic
+            </div>
+        </div>
+
+        <div class="member">
+            🏅
+            <a class="link" href="#">
+                Member of the Day
+            </a>
+
+            <div class="small">
+                Earn points and rewards
+            </div>
+        </div>
+
+        <div class="member">
+            ⭐
+            <a class="link" href="#">
+                Group of the Week
+            </a>
+
+            <div class="small">
+                Discover active groups
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- FOOTER -->
+
+<div class="footer">
+
+    © DeeChat 2026
+
+</div>
+
+
+<script>
+
+/* ==============================
+   SUPABASE CONNECTION
+   ============================== */
+
+const SUPABASE_URL =
+    "https://sqikfejouaxizvidivcg.supabase.co";
+
+const SUPABASE_KEY =
+    "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+
+/* ==============================
+   LOAD LOGGED-IN USER
+   ============================== */
+
+async function loadUser() {
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient.auth.getSession();
+
+
+    /* NOT LOGGED IN */
+
+    if (error || !data.session) {
+
+        window.location.href =
+            "login.html";
+
+        return;
+    }
+
+
+    const user =
+        data.session.user;
+
+
+    /* SHOW EMAIL */
+
+    document.getElementById(
+        "currentUser"
+    ).textContent =
+        user.email;
+
+
+    /* GET PROFILE */
+
+    const {
+        data: profile,
+        error: profileError
+    } =
+        await supabaseClient
+            .from("profiles")
+            .select(`
+                username,
+                display_name,
+                site_role,
+                points,
+                is_verified
+            `)
+            .eq("id", user.id)
+            .single();
+
+
+    if (profileError) {
+
+        console.error(profileError);
+
+        document.getElementById(
+            "welcomeName"
+        ).textContent =
+            "Member";
+
+        return;
+    }
+
+
+    /* DISPLAY NAME */
+
+    const displayName =
+        profile.display_name ||
+        profile.username ||
+        "Member";
+
+
+    document.getElementById(
+        "welcomeName"
+    ).textContent =
+        displayName;
+
+
+    /* USERNAME */
+
+    document.getElementById(
+        "username"
+    ).textContent =
+        profile.username;
+
+
+    /* POINTS */
+
+    document.getElementById(
+        "points"
+    ).textContent =
+        profile.points || 0;
+
+
+    /* ROLE */
+
+    const roleElement =
+        document.getElementById("role");
+
+
+    let roleText =
+        profile.site_role
+            .replaceAll("_", " ")
+            .toUpperCase();
+
+
+    roleElement.textContent =
+        roleText;
+
+
+    /* OWNER TAG */
+
+    if (profile.site_role === "owner") {
+
+        roleElement.className =
+            "tag owner";
+
+    } else {
+
+        roleElement.className =
+            "tag";
+
+    }
+
+}
+
+
+/* ==============================
+   LOGOUT
+   ============================== */
+
+document
+    .getElementById("logout")
+    .addEventListener(
+        "click",
+        async function(event) {
+
+            event.preventDefault();
+
+            await supabaseClient.auth.signOut();
+
+            window.location.href =
+                "login.html";
+
+        }
+    );
+
+
+/* ==============================
+   START
+   ============================== */
+
+loadUser();
+
+</script>
+
+</body>
+</html>
