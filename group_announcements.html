@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Group Announcements - DeeChat</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    margin:0;
+    background:#eaf6ff;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+    color:#222;
+}
+a{color:#0645ad;text-decoration:none}
+a:hover{text-decoration:underline}
+
+.header{
+    background:#075eaa;
+    color:#fff;
+    padding:10px;
+    font-size:20px;
+    font-weight:bold;
+}
+
+.nav{
+    background:#fff;
+    border-bottom:1px solid #aaa;
+    padding:7px;
+    line-height:25px;
+}
+
+.box{
+    margin:8px;
+    background:#fff;
+    border:1px solid #aaa;
+}
+
+.title{
+    background:#ffd84d;
+    border-bottom:1px solid #aaa;
+    padding:7px;
+    font-weight:bold;
+}
+
+.content{
+    padding:8px;
+}
+
+input,textarea,button{
+    width:100%;
+    box-sizing:border-box;
+    padding:8px;
+    margin:4px 0;
+    border:1px solid #999;
+    font-size:14px;
+}
+
+textarea{min-height:90px}
+
+button{
+    background:#075eaa;
+    color:#fff;
+    border:1px solid #034477;
+    font-weight:bold;
+}
+
+.announcement{
+    border-bottom:1px solid #ddd;
+    padding:9px 3px;
+}
+
+.announcement:last-child{
+    border-bottom:0;
+}
+
+.ann-title{
+    font-weight:bold;
+    font-size:16px;
+}
+
+.meta{
+    color:#777;
+    font-size:12px;
+    margin:4px 0;
+}
+
+.role{
+    color:#d00000;
+    font-weight:bold;
+}
+
+.error{
+    color:#c00;
+    font-weight:bold;
+}
+
+.success{
+    color:green;
+    font-weight:bold;
+}
+
+.hidden{display:none}
+
+.footer{
+    text-align:center;
+    padding:15px 5px;
+    color:#777;
+    font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">📢 DeeChat</div>
+
+<div class="nav">
+<a href="homepage.html">Home</a> |
+<a href="groups.html">Groups</a> |
+<a href="group.html" id="groupLink">Group</a> |
+<a href="group_panel.html" id="manageLink">Manage</a>
+</div>
+
+<div id="loading" class="box">
+    <div class="content">Loading...</div>
+</div>
+
+<div id="main" class="hidden">
+
+    <div class="box">
+        <div class="title">📢 <span id="groupName">Group</span> Announcements</div>
+        <div class="content">
+            <span id="groupDescription"></span>
+        </div>
+    </div>
+
+    <div id="createBox" class="box hidden">
+        <div class="title">Create Announcement</div>
+        <div class="content">
+            <input id="annTitle" placeholder="Announcement title">
+
+            <textarea id="annBody"
+                placeholder="Write your announcement..."></textarea>
+
+            <button onclick="createAnnouncement()">
+                Post Announcement
+            </button>
+
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <div class="box">
+        <div class="title">Latest Announcements</div>
+        <div class="content" id="announcementList">
+            Loading announcements...
+        </div>
+    </div>
+
+</div>
+
+<div class="footer">
+©DaVeCrEaToR DeeChat 2026
+</div>
+
+<script>
+const SUPABASE_URL = "https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+    window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const params = new URLSearchParams(location.search);
+const groupId = params.get("id");
+
+let currentUser = null;
+let group = null;
+
+function esc(text){
+    return String(text ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+function roleTag(profile){
+    if(!profile) return "";
+
+    const roles = {
+        owner:"[OWNER]",
+        super_admin:"[SUPER ADMIN]",
+        admin:"[ADMIN]",
+        head_mod:"[HEAD MOD]",
+        moderator:"[MOD]",
+        vip:"[VIP]",
+        verified_member:"[VERIFIED]",
+        member:"[MEMBER]",
+        new_member:"[NEW MEMBER]"
+    };
+
+    return roles[profile.site_role] || "";
+}
+
+async function start(){
+
+    if(!groupId){
+        location.href="groups.html";
+        return;
+    }
+
+    const {data:{session}} =
+        await supabaseClient.auth.getSession();
+
+    if(!session){
+        location.href="login.html";
+        return;
+    }
+
+    currentUser = session.user;
+
+    const {data:groupData,error:groupError} =
+        await supabaseClient
+        .from("groups")
+        .select("*")
+        .eq("id",groupId)
+        .single();
+
+    if(groupError || !groupData){
+        document.getElementById("loading").innerHTML =
+            '<div class="content error">Group not found.</div>';
+        return;
+    }
+
+    group = groupData;
+
+    document.getElementById("groupName").textContent =
+        group.name;
+
+    document.getElementById("groupDescription").textContent =
+        group.description || "";
+
+    document.getElementById("groupLink").href =
+        "group.html?id="+encodeURIComponent(groupId);
+
+    document.getElementById("manageLink").href =
+        "group_panel.html?id="+encodeURIComponent(groupId);
+
+    await checkPermissions();
+    await loadAnnouncements();
+
+    document.getElementById("loading").classList.add("hidden");
+    document.getElementById("main").classList.remove("hidden");
+}
+
+async function checkPermissions(){
+
+    const {data:profile} =
+        await supabaseClient
+        .from("profiles")
+        .select("site_role")
+        .eq("id",currentUser.id)
+        .single();
+
+    let allowed = false;
+
+    if(profile &&
+       ["owner","super_admin","admin"].includes(profile.site_role)){
+        allowed = true;
+    }
+
+    if(group.leader_id === currentUser.id){
+        allowed = true;
+    }
+
+    const {data:membership} =
+        await supabaseClient
+        .from("group_members")
+        .select("is_co_leader")
+        .eq("group_id",groupId)
+        .eq("user_id",currentUser.id)
+        .maybeSingle();
+
+    if(membership && membership.is_co_leader){
+        allowed = true;
+    }
+
+    /*
+       The UI checks permission here.
+       Final permission must also be enforced by Supabase RLS.
+    */
+
+    if(group.enabled_features){
+
+        let features = group.enabled_features;
+
+        if(typeof features === "string"){
+            try{
+                features = JSON.parse(features);
+            }catch(e){}
+        }
+
+        if(Array.isArray(features)){
+            if(
+                features.includes("announcements") ||
+                features.includes("group_announcements")
+            ){
+                // Feature enabled.
+            }
+        }
+    }
+
+    if(allowed){
+        document.getElementById("createBox")
+            .classList.remove("hidden");
+    }
+}
+
+async function loadAnnouncements(){
+
+    /*
+      Announcements are stored using the existing shouts table
+      until a dedicated group_announcements table is created.
+
+      This page expects group_id on shouts.
+    */
+
+    const {data,error} =
+        await supabaseClient
+        .from("shouts")
+        .select(`
+            id,
+            user_id,
+            body,
+            created_at,
+            profiles(
+                username,
+                display_name,
+                site_role,
+                is_verified
+            )
+        `)
+        .eq("group_id",groupId)
+        .order("created_at",{ascending:false})
+        .limit(50);
+
+    const list =
+        document.getElementById("announcementList");
+
+    if(error){
+
+        if(
+            error.message &&
+            error.message.toLowerCase().includes("group_id")
+        ){
+            list.innerHTML =
+                '<div class="error">Group announcements need the group_id database field first.</div>';
+            return;
+        }
+
+        list.innerHTML =
+            '<div class="error">'+esc(error.message)+'</div>';
+        return;
+    }
+
+    if(!data || data.length===0){
+        list.innerHTML =
+            '<div>No announcements yet.</div>';
+        return;
+    }
+
+    list.innerHTML = data.map(item=>{
+
+        const p = item.profiles || {};
+
+        return `
+        <div class="announcement">
+
+            <div class="ann-title">
+                📢 Group Announcement
+            </div>
+
+            <div class="meta">
+                By
+                <a href="profile.html?id=${encodeURIComponent(item.user_id)}">
+                    ${esc(p.display_name || p.username || "Member")}
+                </a>
+
+                ${esc(roleTag(p))}
+
+                ${p.is_verified ? " ✓" : ""}
+
+                • ${new Date(item.created_at).toLocaleString()}
+            </div>
+
+            <div>
+                ${esc(item.body).replace(/\n/g,"<br>")}
+            </div>
+
+        </div>
+        `;
+    }).join("");
+}
+
+async function createAnnouncement(){
+
+    const title =
+        document.getElementById("annTitle").value.trim();
+
+    const body =
+        document.getElementById("annBody").value.trim();
+
+    const msg =
+        document.getElementById("message");
+
+    msg.innerHTML = "";
+
+    if(!title || !body){
+        msg.innerHTML =
+            '<p class="error">Enter a title and announcement.</p>';
+        return;
+    }
+
+    const announcement =
+        "📢 " + title + "\n\n" + body;
+
+    const {error} =
+        await supabaseClient
+        .from("shouts")
+        .insert({
+            user_id:currentUser.id,
+            body:announcement,
+            group_id:groupId
+        });
+
+    if(error){
+        msg.innerHTML =
+            '<p class="error">'+esc(error.message)+'</p>';
+        return;
+    }
+
+    document.getElementById("annTitle").value="";
+    document.getElementById("annBody").value="";
+
+    msg.innerHTML =
+        '<p class="success">Announcement posted.</p>';
+
+    await loadAnnouncements();
+}
+
+start();
+</script>
+
+</body>
+</html>
