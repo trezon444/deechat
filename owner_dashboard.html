@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeeChat - Owner Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    margin:0;
+    background:#eaf4ff;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+    color:#222;
+}
+.header{
+    background:#1976d2;
+    color:white;
+    padding:10px;
+    text-align:center;
+    font-size:20px;
+    font-weight:bold;
+}
+.box{
+    margin:8px;
+    border:1px solid #aaa;
+    background:white;
+}
+.title{
+    background:#ffe680;
+    border-bottom:1px solid #d5b900;
+    padding:7px;
+    font-weight:bold;
+}
+.content{
+    padding:8px;
+}
+a{
+    color:#0645ad;
+    text-decoration:none;
+}
+a:hover{text-decoration:underline}
+.stat{
+    display:inline-block;
+    width:46%;
+    margin:1%;
+    padding:9px 0;
+    background:#f0f7ff;
+    border:1px solid #b7d4ef;
+    text-align:center;
+}
+.stat b{
+    display:block;
+    font-size:20px;
+    color:#1976d2;
+}
+.menu a{
+    display:block;
+    padding:8px;
+    border-bottom:1px solid #ddd;
+}
+.small{
+    color:#666;
+    font-size:12px;
+}
+.danger{
+    color:#b00020;
+}
+.success{
+    color:green;
+}
+button{
+    background:#1976d2;
+    color:white;
+    border:0;
+    padding:7px 12px;
+    cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">👑 DeeChat Owner Dashboard</div>
+
+<div class="box">
+    <div class="title">Owner Account</div>
+    <div class="content">
+        <b id="ownerName">Loading...</b><br>
+        <span class="small" id="ownerEmail"></span><br>
+        <span class="success">👑 OWNER</span>
+    </div>
+</div>
+
+<div class="box">
+    <div class="title">📊 Site Statistics</div>
+    <div class="content">
+
+        <div class="stat">
+            <b id="totalUsers">0</b>
+            Users
+        </div>
+
+        <div class="stat">
+            <b id="onlineUsers">0</b>
+            Online
+        </div>
+
+        <div class="stat">
+            <b id="newUsers">0</b>
+            New Today
+        </div>
+
+        <div class="stat">
+            <b id="totalRooms">0</b>
+            Chat Rooms
+        </div>
+
+        <div class="stat">
+            <b id="activeRooms">0</b>
+            Active Rooms
+        </div>
+
+        <div class="stat">
+            <b id="totalMessages">0</b>
+            Messages
+        </div>
+
+        <div class="stat">
+            <b id="pendingReports">0</b>
+            Pending Reports
+        </div>
+
+        <div class="stat">
+            <b id="bannedUsers">0</b>
+            Banned Users
+        </div>
+
+    </div>
+</div>
+
+<div class="box">
+    <div class="title">👥 User Management</div>
+    <div class="menu">
+        <a href="admin_users.html">👤 Manage Users</a>
+        <a href="members.html">👥 View Members</a>
+        <a href="search.html">🔎 Search Members</a>
+    </div>
+</div>
+
+<div class="box">
+    <div class="title">💬 Chat & Rooms</div>
+    <div class="menu">
+        <a href="admin_rooms.html">🚪 Manage Chat Rooms</a>
+        <a href="chat.html">💬 Open Chat</a>
+        <a href="chat_games.html">🎮 Chatroom Games</a>
+    </div>
+</div>
+
+<div class="box">
+    <div class="title">🛡️ Moderation</div>
+    <div class="menu">
+        <a href="admin_reports.html">🚨 Reports</a>
+        <a href="admin_moderators.html">🛡️ Staff & Moderators</a>
+    </div>
+</div>
+
+<div class="box">
+    <div class="title">👥 Groups</div>
+    <div class="menu">
+        <a href="admin_groups.html">⚙️ Manage Groups</a>
+        <a href="groups.html">📋 View Groups</a>
+    </div>
+</div>
+
+<div class="box">
+    <div class="title">🪙 Currency</div>
+    <div class="menu">
+        <a href="currency.html">🪙 GC & Credits</a>
+        <a href="currency_leaderboard.html">🏆 Currency Leaderboard</a>
+        <a href="transactions.html">📜 Transactions</a>
+    </div>
+</div>
+
+<div class="box">
+    <div class="title">⚙️ Site</div>
+    <div class="menu">
+        <a href="homepage.html">🏠 DeeChat Homepage</a>
+        <a href="settings.html">⚙️ My Settings</a>
+        <a href="#" onclick="logout();return false;">🚪 Logout</a>
+    </div>
+</div>
+
+<div class="box">
+    <div class="content small">
+        DeeChat Owner Dashboard<br>
+        Owner access is restricted to the registered owner account.
+    </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+    window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function loadDashboard(){
+
+    const {
+        data:{session}
+    } = await supabaseClient.auth.getSession();
+
+    if(!session){
+        location.href="login.html";
+        return;
+    }
+
+    document.getElementById("ownerEmail").textContent =
+        session.user.email || "";
+
+    const {data:profile,error} = await supabaseClient
+        .from("profiles")
+        .select("username,display_name,site_role")
+        .eq("id",session.user.id)
+        .single();
+
+    if(error || !profile || profile.site_role !== "owner"){
+        alert("Owner access only.");
+        location.href="homepage.html";
+        return;
+    }
+
+    document.getElementById("ownerName").textContent =
+        profile.display_name || profile.username || "Owner";
+
+    await loadStats();
+}
+
+async function count(table,filter=null){
+
+    let query = supabaseClient
+        .from(table)
+        .select("*",{count:"exact",head:true});
+
+    if(filter){
+        query = filter(query);
+    }
+
+    const {count,error} = await query;
+
+    return error ? 0 : (count || 0);
+}
+
+async function loadStats(){
+
+    document.getElementById("totalUsers").textContent =
+        await count("profiles");
+
+    document.getElementById("bannedUsers").textContent =
+        await count("profiles",q=>q.eq("is_banned",true));
+
+    document.getElementById("totalRooms").textContent =
+        await count("rooms");
+
+    document.getElementById("activeRooms").textContent =
+        await count("rooms",q=>q.eq("is_locked",false));
+
+    document.getElementById("totalMessages").textContent =
+        await count("messages");
+
+    document.getElementById("pendingReports").textContent =
+        await count("reports",q=>q.eq("status","pending"));
+
+    const fiveMinutesAgo =
+        new Date(Date.now()-5*60*1000).toISOString();
+
+    document.getElementById("onlineUsers").textContent =
+        await count("profiles",q=>
+            q.eq("is_banned",false)
+             .gte("last_active_at",fiveMinutesAgo)
+        );
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0,0,0,0);
+
+    document.getElementById("newUsers").textContent =
+        await count("profiles",q=>
+            q.gte("created_at",startOfDay.toISOString())
+        );
+}
+
+async function logout(){
+
+    await supabaseClient.auth.signOut();
+    location.href="index.html";
+}
+
+loadDashboard();
+</script>
+
+</body>
+</html>
