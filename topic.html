@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topic - DeeChat</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    margin:0;
+    background:#eaf7ff;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+    color:#222;
+}
+
+a{
+    color:#0645ad;
+    text-decoration:none;
+}
+
+a:hover{
+    text-decoration:underline;
+}
+
+.header{
+    background:#1683c7;
+    color:white;
+    padding:10px;
+    font-size:20px;
+    font-weight:bold;
+}
+
+.nav{
+    background:#d8efff;
+    padding:7px;
+    border-bottom:1px solid #9acbe8;
+    line-height:25px;
+}
+
+.box{
+    margin:8px;
+    border:1px solid #b5cddd;
+    background:white;
+}
+
+.title{
+    background:#ffd83d;
+    padding:7px;
+    font-weight:bold;
+    color:#333;
+}
+
+.content{
+    padding:8px;
+}
+
+.topic-title{
+    font-size:18px;
+    font-weight:bold;
+    color:#0645ad;
+}
+
+.meta{
+    color:#777;
+    font-size:12px;
+    margin-top:5px;
+}
+
+.role{
+    display:inline-block;
+    background:#eee;
+    border:1px solid #ccc;
+    padding:1px 4px;
+    font-size:10px;
+    margin-left:3px;
+}
+
+.owner{
+    background:#ffd700;
+    color:#000;
+    border-color:#c5a900;
+}
+
+.staff{
+    background:#cceeff;
+    color:#005580;
+}
+
+.verified{
+    color:#008000;
+    font-weight:bold;
+}
+
+.topic-body{
+    padding:10px 0;
+    line-height:1.5;
+    white-space:pre-wrap;
+}
+
+.stats{
+    border-top:1px solid #ddd;
+    padding-top:6px;
+    color:#666;
+    font-size:12px;
+}
+
+textarea{
+    width:100%;
+    box-sizing:border-box;
+    min-height:90px;
+    padding:7px;
+    border:1px solid #aaa;
+}
+
+button{
+    background:#1683c7;
+    color:white;
+    border:0;
+    padding:8px 14px;
+    margin-top:6px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#09679f;
+}
+
+.reply{
+    border-bottom:1px solid #ddd;
+    padding:8px 0;
+}
+
+.reply:last-child{
+    border-bottom:0;
+}
+
+.reply-body{
+    margin-top:6px;
+    white-space:pre-wrap;
+    line-height:1.5;
+}
+
+.error{
+    color:#b00000;
+    padding:8px;
+}
+
+.success{
+    color:#008000;
+    padding:8px;
+}
+
+.small{
+    font-size:12px;
+    color:#777;
+}
+
+.footer{
+    text-align:center;
+    padding:15px 8px;
+    font-size:12px;
+    color:#777;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">💬 DeeChat</div>
+
+<div class="nav">
+    <a href="homepage.html">Home</a> |
+    <a href="shouts.html">Shouts</a> |
+    <a href="topics.html">Topics</a> |
+    <a href="members.html">Members</a> |
+    <a href="groups.html">Groups</a>
+</div>
+
+<div id="message"></div>
+
+<div class="box" id="topicBox">
+    <div class="title">Topic</div>
+    <div class="content">
+        <div id="topicContent">Loading topic...</div>
+    </div>
+</div>
+
+<div class="box">
+    <div class="title">Reply</div>
+
+    <div class="content">
+        <textarea id="replyBody" placeholder="Write your reply..."></textarea>
+        <br>
+        <button id="replyBtn">Post Reply</button>
+    </div>
+</div>
+
+<div class="box">
+    <div class="title">Replies</div>
+
+    <div class="content" id="replies">
+        Loading replies...
+    </div>
+</div>
+
+<div class="footer">
+    © 2026 DeeChat
+</div>
+
+<script>
+const SUPABASE_URL = "https://sqikfejouaxizvidivcg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+let currentUser = null;
+let currentTopic = null;
+
+
+/* ---------------------------
+   HTML ESCAPE
+---------------------------- */
+
+function escapeHTML(value){
+    return String(value ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+
+/* ---------------------------
+   ROLE TAG
+---------------------------- */
+
+function roleTag(profile){
+
+    if(!profile) return "";
+
+    let role = profile.site_role || "member";
+
+    let label = "";
+
+    if(role === "owner"){
+        label = "OWNER";
+        return `<span class="role owner">${label}</span>`;
+    }
+
+    if(role === "super_admin"){
+        label = "SUPER ADMIN";
+    }
+    else if(role === "admin"){
+        label = "ADMIN";
+    }
+    else if(role === "head_mod"){
+        label = "HEAD MOD";
+    }
+    else if(role === "moderator"){
+        label = "MOD";
+    }
+    else if(role === "vip"){
+        label = "VIP";
+    }
+    else if(role === "verified_member"){
+        label = "VERIFIED";
+    }
+    else{
+        return "";
+    }
+
+    return `<span class="role staff">${label}</span>`;
+}
+
+
+/* ---------------------------
+   DATE
+---------------------------- */
+
+function formatDate(date){
+
+    if(!date) return "";
+
+    return new Date(date).toLocaleString();
+}
+
+
+/* ---------------------------
+   GET TOPIC ID
+---------------------------- */
+
+function getTopicId(){
+
+    const params = new URLSearchParams(
+        window.location.search
+    );
+
+    return params.get("id");
+}
+
+
+/* ---------------------------
+   LOGIN CHECK
+---------------------------- */
+
+async function checkLogin(){
+
+    const {
+        data,
+        error
+    } = await supabaseClient.auth.getSession();
+
+    if(error || !data.session){
+
+        window.location.href = "login.html";
+
+        return false;
+    }
+
+    currentUser = data.session.user;
+
+    return true;
+}
+
+
+/* ---------------------------
+   LOAD TOPIC
+---------------------------- */
+
+async function loadTopic(){
+
+    const topicId = getTopicId();
+
+    if(!topicId){
+
+        document.getElementById("topicContent").innerHTML =
+            `<div class="error">
+                No topic was selected.
+             </div>`;
+
+        return;
+    }
+
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("topics")
+        .select(`
+            id,
+            title,
+            body,
+            category,
+            likes_count,
+            replies_count,
+            views_count,
+            is_locked,
+            created_at,
+            user_id,
+            profiles:user_id (
+                username,
+                display_name,
+                site_role,
+                is_verified
+            )
+        `)
+        .eq("id", topicId)
+        .single();
+
+    if(error){
+
+        document.getElementById("topicContent").innerHTML =
+            `<div class="error">
+                Topic could not be loaded.
+             </div>`;
+
+        console.error(error);
+
+        return;
+    }
+
+    currentTopic = data;
+
+    /* Increase views */
+
+    await supabaseClient
+        .from("topics")
+        .update({
+            views_count: (data.views_count || 0) + 1
+        })
+        .eq("id", topicId);
+
+    const profile = data.profiles;
+
+    let verified =
+        profile && profile.is_verified
+        ? `<span class="verified">✔</span>`
+        : "";
+
+    document.getElementById("topicContent").innerHTML = `
+
+        <div class="topic-title">
+            ${escapeHTML(data.title)}
+        </div>
+
+        <div class="meta">
+
+            By
+            <a href="profile.html?id=${data.user_id}">
+                ${escapeHTML(
+                    profile?.display_name ||
+                    profile?.username ||
+                    "Member"
+                )}
+            </a>
+
+            ${roleTag(profile)}
+            ${verified}
+
+            <br>
+
+            Category:
+            ${escapeHTML(data.category || "General")}
+
+            <br>
+
+            ${formatDate(data.created_at)}
+
+        </div>
+
+        <div class="topic-body">
+            ${escapeHTML(data.body)}
+        </div>
+
+        <div class="stats">
+
+            👍 ${data.likes_count || 0} Likes
+
+            &nbsp; | &nbsp;
+
+            💬 ${data.replies_count || 0} Replies
+
+            &nbsp; | &nbsp;
+
+            👁 ${data.views_count || 0} Views
+
+        </div>
+
+        ${
+            data.is_locked
+            ? `<div class="small">
+                🔒 This topic is locked.
+               </div>`
+            : ""
+        }
+    `;
+
+    if(data.is_locked){
+
+        document.getElementById("replyBody").disabled = true;
+        document.getElementById("replyBtn").disabled = true;
+
+        document.getElementById("replyBtn").innerText =
+            "Topic Locked";
+    }
+
+    loadReplies(topicId);
+}
+
+
+/* ---------------------------
+   LOAD REPLIES
+---------------------------- */
+
+async function loadReplies(topicId){
+
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("topic_replies")
+        .select(`
+            id,
+            body,
+            created_at,
+            user_id,
+            profiles:user_id (
+                username,
+                display_name,
+                site_role,
+                is_verified
+            )
+        `)
+        .eq("topic_id", topicId)
+        .order("created_at", {
+            ascending:true
+        });
+
+    if(error){
+
+        document.getElementById("replies").innerHTML =
+            `<div class="error">
+                Could not load replies.
+             </div>`;
+
+        console.error(error);
+
+        return;
+    }
+
+    if(!data || data.length === 0){
+
+        document.getElementById("replies").innerHTML =
+            `<div class="small">
+                No replies yet. Be the first to reply!
+             </div>`;
+
+        return;
+    }
+
+    document.getElementById("replies").innerHTML =
+        data.map((reply,index)=>{
+
+            const profile = reply.profiles;
+
+            const verified =
+                profile && profile.is_verified
+                ? `<span class="verified">✔</span>`
+                : "";
+
+            return `
+
+                <div class="reply">
+
+                    <div class="meta">
+
+                        <b>
+                            <a href="profile.html?id=${reply.user_id}">
+                                ${escapeHTML(
+                                    profile?.display_name ||
+                                    profile?.username ||
+                                    "Member"
+                                )}
+                            </a>
+                        </b>
+
+                        ${roleTag(profile)}
+                        ${verified}
+
+                        <br>
+
+                        ${formatDate(reply.created_at)}
+
+                    </div>
+
+                    <div class="reply-body">
+                        ${escapeHTML(reply.body)}
+                    </div>
+
+                </div>
+            `;
+
+        }).join("");
+}
+
+
+/* ---------------------------
+   POST REPLY
+---------------------------- */
+
+document.getElementById("replyBtn")
+.addEventListener("click", async function(){
+
+    const body =
+        document.getElementById("replyBody")
+        .value
+        .trim();
+
+    const topicId = getTopicId();
+
+    if(!body){
+
+        document.getElementById("message").innerHTML =
+            `<div class="error">
+                Please write a reply.
+             </div>`;
+
+        return;
+    }
+
+    if(!topicId || !currentUser){
+
+        return;
+    }
+
+    this.disabled = true;
+    this.innerText = "Posting...";
+
+    const {
+        error
+    } = await supabaseClient
+        .from("topic_replies")
+        .insert({
+            topic_id: topicId,
+            user_id: currentUser.id,
+            body: body
+        });
+
+    if(error){
+
+        document.getElementById("message").innerHTML =
+            `<div class="error">
+                ${escapeHTML(error.message)}
+             </div>`;
+
+        this.disabled = false;
+        this.innerText = "Post Reply";
+
+        return;
+    }
+
+    /* Update reply count */
+
+    const {
+        data:topic
+    } = await supabaseClient
+        .from("topics")
+        .select("replies_count")
+        .eq("id",topicId)
+        .single();
+
+    if(topic){
+
+        await supabaseClient
+            .from("topics")
+            .update({
+                replies_count:
+                    (topic.replies_count || 0) + 1
+            })
+            .eq("id",topicId);
+    }
+
+    document.getElementById("replyBody").value = "";
+
+    document.getElementById("message").innerHTML =
+        `<div class="success">
+            Reply posted successfully!
+         </div>`;
+
+    this.disabled = false;
+    this.innerText = "Post Reply";
+
+    loadTopic();
+});
+
+
+/* ---------------------------
+   START
+---------------------------- */
+
+(async function(){
+
+    const loggedIn = await checkLogin();
+
+    if(!loggedIn) return;
+
+    loadTopic();
+
+})();
+</script>
+
+</body>
+</html>
