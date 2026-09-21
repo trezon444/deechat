@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Members - DeeChat</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    margin:0;
+    background:#eaf7ff;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+    color:#222;
+}
+
+a{
+    color:#0645ad;
+    text-decoration:none;
+}
+
+a:hover{
+    text-decoration:underline;
+}
+
+.header{
+    background:#1683c7;
+    color:white;
+    padding:10px;
+    font-size:20px;
+    font-weight:bold;
+}
+
+.nav{
+    background:#d8efff;
+    padding:7px;
+    border-bottom:1px solid #9acbe8;
+    line-height:25px;
+}
+
+.box{
+    margin:8px;
+    border:1px solid #b5cddd;
+    background:white;
+}
+
+.title{
+    background:#ffd83d;
+    padding:7px;
+    font-weight:bold;
+}
+
+.content{
+    padding:8px;
+}
+
+.member{
+    border-bottom:1px solid #ddd;
+    padding:8px 0;
+}
+
+.member:last-child{
+    border-bottom:0;
+}
+
+.avatar{
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    background:#ddd;
+    display:inline-block;
+    vertical-align:middle;
+    margin-right:7px;
+    object-fit:cover;
+}
+
+.member-info{
+    display:inline-block;
+    vertical-align:middle;
+}
+
+.username{
+    font-weight:bold;
+}
+
+.online{
+    color:#008000;
+    font-size:12px;
+    font-weight:bold;
+}
+
+.offline{
+    color:#888;
+    font-size:12px;
+}
+
+.role{
+    display:inline-block;
+    background:#eee;
+    border:1px solid #ccc;
+    padding:1px 4px;
+    font-size:10px;
+    margin-left:3px;
+}
+
+.owner{
+    background:#ffd700;
+    color:#000;
+    border-color:#c5a900;
+}
+
+.staff{
+    background:#cceeff;
+    color:#005580;
+}
+
+.verified{
+    color:#008000;
+    font-weight:bold;
+}
+
+.search{
+    width:100%;
+    box-sizing:border-box;
+    padding:8px;
+    border:1px solid #aaa;
+}
+
+button{
+    background:#1683c7;
+    color:white;
+    border:0;
+    padding:7px 12px;
+    margin-top:5px;
+}
+
+.small{
+    color:#777;
+    font-size:12px;
+}
+
+.error{
+    color:#b00000;
+    padding:8px;
+}
+
+.footer{
+    text-align:center;
+    padding:15px 8px;
+    color:#777;
+    font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">👥 DeeChat</div>
+
+<div class="nav">
+    <a href="homepage.html">Home</a> |
+    <a href="shouts.html">Shouts</a> |
+    <a href="topics.html">Topics</a> |
+    <a href="members.html">Members</a> |
+    <a href="groups.html">Groups</a>
+</div>
+
+<div class="box">
+    <div class="title">Members</div>
+
+    <div class="content">
+
+        <input
+            type="text"
+            id="search"
+            class="search"
+            placeholder="Search members..."
+        >
+
+        <button onclick="showOnline()">Online Users</button>
+        <button onclick="showAll()">All Members</button>
+
+    </div>
+</div>
+
+<div class="box">
+
+    <div class="title" id="listTitle">
+        Online Users
+    </div>
+
+    <div class="content" id="membersList">
+        Loading members...
+    </div>
+
+</div>
+
+<div class="footer">
+    © 2026 DeeChat
+</div>
+
+<script>
+
+const SUPABASE_URL =
+"https://sqikfejouaxizvidivcg.supabase.co";
+
+const SUPABASE_KEY =
+"sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient =
+window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+let currentUser = null;
+let allMembers = [];
+let currentMode = "online";
+
+
+function escapeHTML(value){
+
+    return String(value ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+
+/* ROLE TAG */
+
+function roleTag(profile){
+
+    if(!profile) return "";
+
+    const role = profile.site_role;
+
+    if(role === "owner"){
+        return `<span class="role owner">OWNER</span>`;
+    }
+
+    if(role === "super_admin"){
+        return `<span class="role staff">SUPER ADMIN</span>`;
+    }
+
+    if(role === "admin"){
+        return `<span class="role staff">ADMIN</span>`;
+    }
+
+    if(role === "head_mod"){
+        return `<span class="role staff">HEAD MOD</span>`;
+    }
+
+    if(role === "moderator"){
+        return `<span class="role staff">MOD</span>`;
+    }
+
+    if(role === "vip"){
+        return `<span class="role staff">VIP</span>`;
+    }
+
+    if(role === "verified_member"){
+        return `<span class="role staff">VERIFIED</span>`;
+    }
+
+    return "";
+}
+
+
+/* ONLINE CHECK */
+
+function isOnline(lastActive){
+
+    if(!lastActive) return false;
+
+    const last =
+        new Date(lastActive).getTime();
+
+    const now =
+        Date.now();
+
+    const difference =
+        now - last;
+
+    /*
+      User is considered online
+      if active within the last 5 minutes.
+    */
+
+    return difference <= 5 * 60 * 1000;
+}
+
+
+/* LOGIN */
+
+async function checkLogin(){
+
+    const {
+        data,
+        error
+    } =
+    await supabaseClient.auth.getSession();
+
+    if(error || !data.session){
+
+        window.location.href =
+            "login.html";
+
+        return false;
+    }
+
+    currentUser =
+        data.session.user;
+
+    return true;
+}
+
+
+/* LOAD MEMBERS */
+
+async function loadMembers(){
+
+    const {
+        data,
+        error
+    } =
+    await supabaseClient
+    .from("profiles")
+    .select(`
+        id,
+        username,
+        display_name,
+        avatar_url,
+        site_role,
+        points,
+        is_verified,
+        is_banned,
+        is_suspended,
+        last_active_at,
+        created_at
+    `)
+    .eq("is_banned",false)
+    .order("last_active_at",{
+        ascending:false,
+        nullsFirst:false
+    });
+
+    if(error){
+
+        document.getElementById(
+            "membersList"
+        ).innerHTML =
+        `<div class="error">
+            Could not load members.
+        </div>`;
+
+        console.error(error);
+
+        return;
+    }
+
+    allMembers = data || [];
+
+    renderMembers();
+}
+
+
+/* RENDER */
+
+function renderMembers(){
+
+    const search =
+        document.getElementById("search")
+        .value
+        .toLowerCase()
+        .trim();
+
+    let members =
+        allMembers.filter(member=>{
+
+            const username =
+                (member.username || "")
+                .toLowerCase();
+
+            const displayName =
+                (member.display_name || "")
+                .toLowerCase();
+
+            if(search){
+
+                return username.includes(search)
+                    || displayName.includes(search);
+            }
+
+            return true;
+        });
+
+
+    /* ONLY NORMAL USERS ONLINE */
+
+    if(currentMode === "online"){
+
+        members =
+        members.filter(member =>
+            isOnline(member.last_active_at)
+        );
+    }
+
+
+    const list =
+        document.getElementById("membersList");
+
+
+    if(members.length === 0){
+
+        list.innerHTML =
+        `<div class="small">
+            No members found.
+        </div>`;
+
+        return;
+    }
+
+
+    list.innerHTML =
+    members.map(member=>{
+
+        const online =
+            isOnline(member.last_active_at);
+
+
+        const avatar =
+            member.avatar_url
+            ? `<img
+                class="avatar"
+                src="${escapeHTML(member.avatar_url)}"
+                alt="Avatar"
+              >`
+            : `<span class="avatar"></span>`;
+
+
+        const verified =
+            member.is_verified
+            ? `<span class="verified">✔</span>`
+            : "";
+
+
+        return `
+
+        <div class="member">
+
+            ${avatar}
+
+            <div class="member-info">
+
+                <div class="username">
+
+                    <a href="profile.html?id=${member.id}">
+                        ${escapeHTML(
+                            member.display_name ||
+                            member.username ||
+                            "Member"
+                        )}
+                    </a>
+
+                    ${roleTag(member)}
+                    ${verified}
+
+                </div>
+
+                <div class="small">
+                    @${escapeHTML(
+                        member.username || ""
+                    )}
+                </div>
+
+                ${
+                    online
+                    ? `<div class="online">
+                        ● Online
+                       </div>`
+                    : `<div class="offline">
+                        ○ Offline
+                       </div>`
+                }
+
+                <div class="small">
+                    ⭐ ${member.points || 0} points
+                </div>
+
+            </div>
+
+        </div>
+
+        `;
+
+    }).join("");
+}
+
+
+/* ONLINE */
+
+function showOnline(){
+
+    currentMode = "online";
+
+    document.getElementById(
+        "listTitle"
+    ).innerText = "Online Users";
+
+    renderMembers();
+}
+
+
+/* ALL */
+
+function showAll(){
+
+    currentMode = "all";
+
+    document.getElementById(
+        "listTitle"
+    ).innerText = "All Members";
+
+    renderMembers();
+}
+
+
+/* SEARCH */
+
+document.getElementById("search")
+.addEventListener(
+    "input",
+    renderMembers
+);
+
+
+/* START */
+
+(async function(){
+
+    const loggedIn =
+        await checkLogin();
+
+    if(!loggedIn) return;
+
+    await loadMembers();
+
+})();
+
+</script>
+
+</body>
+</html>
