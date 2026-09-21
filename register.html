@@ -1,431 +1,144 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Register - DeeChat</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeeChat - Register</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    background: #eaf4ff;
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    color: #333;
-}
-
-.header {
-    background: #1769aa;
-    color: white;
-    padding: 12px;
-    font-size: 20px;
-    font-weight: bold;
-}
-
-.box {
-    margin: 10px;
-    border: 1px solid #b7cde2;
-    background: white;
-}
-
-.title {
-    background: #ffe45c;
-    padding: 8px;
-    font-weight: bold;
-}
-
-.content {
-    padding: 10px;
-}
-
-label {
-    display: block;
-    margin-top: 9px;
-    font-weight: bold;
-}
-
-input,
-select,
-textarea {
-    width: 100%;
-    padding: 9px;
-    margin-top: 4px;
-    border: 1px solid #aaa;
-    font-size: 14px;
-}
-
-textarea {
-    height: 75px;
-    resize: vertical;
-}
-
-button {
-    width: 100%;
-    margin-top: 12px;
-    padding: 10px;
-    border: 0;
-    background: #1769aa;
-    color: white;
-    font-weight: bold;
-    font-size: 15px;
-}
-
-button:disabled {
-    background: #888;
-}
-
-.message {
-    display: none;
-    margin-top: 10px;
-    padding: 8px;
-}
-
-.success {
-    background: #d9f7d9;
-    border: 1px solid #8ac98a;
-}
-
-.error {
-    background: #ffdede;
-    border: 1px solid #e09090;
-}
-
-.links {
-    padding: 10px;
-    text-align: center;
-}
-
-a {
-    color: #075aaa;
-    text-decoration: none;
-}
+body{margin:0;background:#eaf4ff;font-family:Arial;font-size:14px}
+.header{background:#1976d2;color:white;text-align:center;padding:12px;font-size:21px;font-weight:bold}
+.box{margin:10px 8px;background:white;border:1px solid #aaa}
+.title{background:#ffe680;padding:8px;font-weight:bold;border-bottom:1px solid #d4b900}
+.content{padding:9px}
+label{display:block;font-weight:bold;margin-top:8px}
+input,textarea{width:100%;box-sizing:border-box;padding:8px;margin-top:4px;border:1px solid #aaa}
+textarea{height:80px}
+button{background:#1976d2;color:white;border:0;padding:9px 14px;margin-top:12px}
+a{color:#0645ad;text-decoration:none}
+.msg{display:none;padding:8px;margin-bottom:8px}
+.error{background:#ffe5e5;color:#a00000}
 </style>
 </head>
 
 <body>
 
-<div class="header">
-    DeeChat
-</div>
+<div class="header">💬 DeeChat</div>
 
 <div class="box">
+<div class="title">📝 Create Account</div>
 
-    <div class="title">
-        Create Your DeeChat Account
-    </div>
+<div class="content">
 
-    <div class="content">
+<div id="msg" class="msg error"></div>
 
-        <form id="registerForm">
+<label>Username</label>
+<input id="username" maxlength="30" required>
 
-            <label for="username">Username</label>
-            <input
-                type="text"
-                id="username"
-                maxlength="20"
-                required
-                placeholder="Choose a username"
-            >
+<label>Email</label>
+<input id="email" type="email" required>
 
-            <label for="email">Email</label>
-            <input
-                type="email"
-                id="email"
-                required
-                placeholder="you@example.com"
-            >
+<label>Password</label>
+<input id="password" type="password" required>
 
-            <label for="password">Password</label>
-            <input
-                type="password"
-                id="password"
-                minlength="6"
-                required
-                placeholder="At least 6 characters"
-            >
+<label>Confirm Password</label>
+<input id="confirmPassword" type="password" required>
 
-            <label for="confirmPassword">Confirm Password</label>
-            <input
-                type="password"
-                id="confirmPassword"
-                minlength="6"
-                required
-                placeholder="Enter password again"
-            >
+<label>Gender</label>
+<select id="gender" style="width:100%;padding:8px;margin-top:4px">
+<option value="">Select</option>
+<option>Male</option>
+<option>Female</option>
+<option>Other</option>
+</select>
 
-            <label for="gender">Gender</label>
-            <select id="gender">
-                <option value="">Select</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-                <option value="Prefer not to say">
-                    Prefer not to say
-                </option>
-            </select>
+<label>Bio</label>
+<textarea id="bio" maxlength="500"></textarea>
 
-            <label for="bio">Bio</label>
-            <textarea
-                id="bio"
-                maxlength="500"
-                placeholder="Tell members something about you..."
-            ></textarea>
+<button onclick="register()">🚀 Register</button>
 
-            <button type="submit" id="registerButton">
-                Create Account
-            </button>
+<br><br>
 
-        </form>
+Already have an account?
+<a href="login.html">Login</a>
 
-        <div id="message" class="message"></div>
-
-    </div>
 </div>
-
-<div class="links">
-    Already have an account?
-    <a href="login.html">Login</a>
 </div>
-
-<div class="links">
-    <a href="index.html">← Back to DeeChat</a>
-</div>
-
 
 <script>
-
-/* ==============================
-   DEECHAT SUPABASE CONNECTION
-   ============================== */
-
 const SUPABASE_URL =
-    "https://sqikfejouaxizvidivcg.supabase.co";
+"https://sqikfejouaxizvidivcg.supabase.co";
 
 const SUPABASE_KEY =
-    "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+"sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
 
 const supabaseClient =
-    window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_KEY
-    );
+window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
 
-
-/* ==============================
-   FORM ELEMENTS
-   ============================== */
-
-const form =
-    document.getElementById("registerForm");
-
-const button =
-    document.getElementById("registerButton");
-
-const message =
-    document.getElementById("message");
-
-
-/* ==============================
-   MESSAGE FUNCTION
-   ============================== */
-
-function showMessage(text, type) {
-
-    message.textContent = text;
-
-    message.className =
-        "message " + type;
-
-    message.style.display = "block";
+function showError(text){
+const msg=document.getElementById("msg");
+msg.textContent=text;
+msg.style.display="block";
 }
 
-
-/* ==============================
-   REGISTRATION
-   ============================== */
-
-form.addEventListener("submit", async function(event) {
-
-    event.preventDefault();
-
-    const username =
-        document.getElementById("username")
-        .value
-        .trim();
-
-    const email =
-        document.getElementById("email")
-        .value
-        .trim();
-
-    const password =
-        document.getElementById("password")
-        .value;
-
-    const confirmPassword =
-        document.getElementById("confirmPassword")
-        .value;
-
-    const gender =
-        document.getElementById("gender")
-        .value;
-
-    const bio =
-        document.getElementById("bio")
-        .value
-        .trim();
-
-
-    /* USERNAME CHECK */
-
-    if (username.length < 3) {
-
-        showMessage(
-            "Username must be at least 3 characters.",
-            "error"
-        );
-
-        return;
-    }
-
-
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-
-        showMessage(
-            "Username can only contain letters, numbers and underscores.",
-            "error"
-        );
-
-        return;
-    }
-
-
-    /* PASSWORD CHECK */
-
-    if (password.length < 6) {
-
-        showMessage(
-            "Password must be at least 6 characters.",
-            "error"
-        );
-
-        return;
-    }
-
-
-    if (password !== confirmPassword) {
-
-        showMessage(
-            "Passwords do not match.",
-            "error"
-        );
-
-        return;
-    }
-
-
-    /* DISABLE BUTTON */
-
-    button.disabled = true;
-
-    button.textContent =
-        "Creating account...";
-
-
-    /* ==============================
-       SUPABASE SIGN UP
-       ============================== */
-
-    const { data, error } =
-        await supabaseClient.auth.signUp({
-
-            email: email,
-
-            password: password,
-
-            options: {
-
-                data: {
-
-                    username: username,
-
-                    display_name: username,
-
-                    gender: gender,
-
-                    bio: bio
-
-                }
-
-            }
-
-        });
-
-
-    /* ==============================
-       ERROR
-       ============================== */
-
-    if (error) {
-
-        showMessage(
-            error.message,
-            "error"
-        );
-
-        button.disabled = false;
-
-        button.textContent =
-            "Create Account";
-
-        return;
-    }
-
-
-    /* ==============================
-       SUCCESS
-       ============================== */
-
-    if (data.user) {
-
-        if (data.session) {
-
-            showMessage(
-                "Account created successfully! Opening DeeChat...",
-                "success"
-            );
-
-            setTimeout(function() {
-
-                window.location.href =
-                    "homepage.html";
-
-            }, 1200);
-
-        } else {
-
-            showMessage(
-                "Account created! Check your email and confirm your account before logging in.",
-                "success"
-            );
-
-            button.disabled = false;
-
-            button.textContent =
-                "Create Account";
-        }
-
-    }
-
+async function register(){
+
+const username=document.getElementById("username").value.trim();
+const email=document.getElementById("email").value.trim();
+const password=document.getElementById("password").value;
+const confirm=document.getElementById("confirmPassword").value;
+const gender=document.getElementById("gender").value;
+const bio=document.getElementById("bio").value.trim();
+
+if(!username || !email || !password){
+showError("Please fill all required fields.");
+return;
+}
+
+if(password !== confirm){
+showError("Passwords do not match.");
+return;
+}
+
+if(password.length < 6){
+showError("Password must be at least 6 characters.");
+return;
+}
+
+const {data,error}=await supabaseClient.auth.signUp({
+email:email,
+password:password,
+options:{
+data:{
+username:username,
+display_name:username,
+gender:gender,
+bio:bio
+}
+}
 });
 
+if(error){
+showError(error.message);
+return;
+}
+
+/*
+With email confirmation OFF,
+Supabase should return an active session.
+*/
+
+if(data.session){
+location.href="homepage.html";
+}else{
+showError("Account created. Please log in.");
+location.href="login.html";
+}
+
+}
 </script>
 
 </body>
