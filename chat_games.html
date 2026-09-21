@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeeChat - Chatroom Games</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{margin:0;background:#eaf6ff;font:14px Arial;color:#222}
+a{color:#0645ad;text-decoration:none}
+.header{background:#075985;color:#fff;padding:10px;font-size:20px;font-weight:bold}
+.nav{background:#dff3ff;border-bottom:1px solid #9ccfe8;padding:7px;line-height:1.8}
+.box{margin:8px;border:1px solid #9ccfe8;background:#fff}
+.title{background:#ffe66d;border-bottom:1px solid #d5bd28;padding:7px;font-weight:bold}
+.content{padding:8px}
+.game{padding:9px 2px;border-bottom:1px solid #ddd}
+.game:last-child{border-bottom:0}
+input,select{width:100%;box-sizing:border-box;padding:7px;margin:4px 0 8px;border:1px solid #aaa}
+button{padding:7px 10px;margin:2px;border:1px solid #777;background:#e7f4ff}
+button:hover{background:#d1ebff}
+.small{font-size:12px;color:#666}
+#message{display:none;margin:8px;padding:7px;background:#fff7bf;border:1px solid #ddd16a}
+</style>
+</head>
+
+<body>
+
+<div class="header">DeeChat - Chatroom Games</div>
+
+<div class="nav">
+<a href="homepage.html">Home</a> |
+<a href="chat.html">Chat</a> |
+<a href="currency.html">Currency</a> |
+<a href="currency_leaderboard.html">Leaderboard</a> |
+<a href="profile.html">Profile</a>
+</div>
+
+<div id="message"></div>
+
+<div class="box">
+<div class="title">🎮 Multiplayer Chatroom Games</div>
+
+<div class="content">
+<p>
+Players in the same chatroom can compete against each other.
+</p>
+
+<p class="small">
+Every player pays the game's Credits entry fee.
+The combined entry fees become the game pot.
+The winner receives the pot.
+</p>
+
+<b>Example:</b><br>
+2 players × 50 Credits = 100 Credits pot.<br>
+Winner receives 100 Credits.
+</div>
+</div>
+
+<div class="box">
+<div class="title">Create Game</div>
+
+<div class="content">
+
+<label>Chatroom</label>
+<select id="room">
+<option value="">Loading rooms...</option>
+</select>
+
+<label>Game Name</label>
+<input id="gameName" placeholder="Example: Snake Battle">
+
+<label>Description</label>
+<input id="description" placeholder="Game description">
+
+<label>Minimum Players</label>
+<input id="minPlayers" type="number" value="2" min="2">
+
+<label>Maximum Players</label>
+<input id="maxPlayers" type="number" value="4" min="2">
+
+<label>Entry Fee - Credits</label>
+<input id="entryFee" type="number" value="10" min="1">
+
+<button onclick="createGame()">Create Game</button>
+
+</div>
+</div>
+
+<div class="box">
+<div class="title">Available Games</div>
+
+<div class="content">
+<div id="games">Loading games...</div>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL=
+"https://sqikfejouaxizvidivcg.supabase.co";
+
+const SUPABASE_KEY=
+"sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+
+const supabaseClient=
+window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
+
+let currentUser=null;
+
+function esc(v){
+return String(v??"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+}
+
+function showMessage(text){
+const box=document.getElementById("message");
+box.textContent=text;
+box.style.display="block";
+}
+
+async function checkLogin(){
+
+const {data:{user}}=
+await supabaseClient.auth.getUser();
+
+if(!user){
+location.href="login.html";
+return false;
+}
+
+currentUser=user;
+return true;
+}
+
+async function loadRooms(){
+
+const {data,error}=
+await supabaseClient
+.from("rooms")
+.select("id,name,is_locked")
+.eq("is_locked",false)
+.order("name");
+
+const select=
+document.getElementById("room");
+
+select.innerHTML=
+'<option value="">Select chatroom</option>';
+
+if(error)return;
+
+data.forEach(room=>{
+
+const option=
+document.createElement("option");
+
+option.value=room.id;
+option.textContent=room.name;
+
+select.appendChild(option);
+});
+}
+
+async function createGame(){
+
+const roomId=
+document.getElementById("room").value;
+
+const name=
+document.getElementById("gameName").value.trim();
+
+const description=
+document.getElementById("description").value.trim();
+
+const minPlayers=
+parseInt(document.getElementById("minPlayers").value,10);
+
+const maxPlayers=
+parseInt(document.getElementById("maxPlayers").value,10);
+
+const entryFee=
+parseInt(document.getElementById("entryFee").value,10);
+
+if(!roomId||!name){
+alert("Select a room and enter a game name.");
+return;
+}
+
+if(minPlayers<2||maxPlayers<minPlayers){
+alert("Check the player limits.");
+return;
+}
+
+if(entryFee<1){
+alert("Entry fee must be at least 1 Credit.");
+return;
+}
+
+const {error}=
+await supabaseClient
+.from("room_games")
+.insert({
+room_id:roomId,
+name:name,
+description:description||null,
+min_players:minPlayers,
+max_players:maxPlayers,
+entry_credits:entryFee,
+status:"waiting"
+});
+
+if(error){
+showMessage(error.message);
+return;
+}
+
+showMessage("Game created.");
+
+document.getElementById("gameName").value="";
+document.getElementById("description").value="";
+
+loadGames();
+}
+
+async function loadGames(){
+
+const container=
+document.getElementById("games");
+
+const {data,error}=
+await supabaseClient
+.from("room_games")
+.select(`
+id,
+room_id,
+name,
+description,
+min_players,
+max_players,
+entry_credits,
+status,
+created_at,
+rooms:room_id(name)
+`)
+.in("status",["waiting","active"])
+.order("created_at",{ascending:false});
+
+if(error){
+
+container.innerHTML=
+"<span class='small'>"+
+"Games database is not ready yet."+
+"</span>";
+
+return;
+}
+
+if(!data||data.length===0){
+
+container.textContent="No active games.";
+return;
+}
+
+container.innerHTML="";
+
+for(const game of data){
+
+const div=
+document.createElement("div");
+
+div.className="game";
+
+const roomName=
+game.rooms
+?game.rooms.name
+:"Unknown room";
+
+const {count}=await supabaseClient
+.from("room_game_players")
+.select("id",{count:"exact",head:true})
+.eq("game_id",game.id);
+
+const players=count||0;
+
+div.innerHTML=`
+
+<b>🎮 ${esc(game.name)}</b>
+
+<br>
+
+Room:
+<a href="chat.html?room=${game.room_id}">
+${esc(roomName)}
+</a>
+
+<br><br>
+
+${esc(game.description||"No description.")}
+
+<br><br>
+
+👥 Players:
+${players}/${game.max_players}
+
+<br>
+
+⭐ Entry:
+<b>${Number(game.entry_credits).toLocaleString()} Credits</b>
+
+<br>
+
+🏆 Current Pot:
+<b>${(players*Number(game.entry_credits)).toLocaleString()} Credits</b>
+
+<br>
+
+<span class="small">
+Minimum players: ${game.min_players}
+</span>
+
+<br><br>
+
+<button onclick="joinGame('${game.id}')">
+Join Game
+</button>
+
+`;
+
+container.appendChild(div);
+}
+}
+
+async function joinGame(gameId){
+
+const {data,error}=
+await supabaseClient.rpc(
+"join_room_game",
+{
+p_game_id:gameId
+}
+);
+
+if(error){
+
+showMessage(
+error.message||
+"Unable to join game."
+);
+
+return;
+}
+
+showMessage(
+"Game joined successfully."
+);
+
+loadGames();
+}
+
+async function start(){
+
+if(!await checkLogin())return;
+
+await loadRooms();
+await loadGames();
+}
+
+start();
+</script>
+
+</body>
+</html>
