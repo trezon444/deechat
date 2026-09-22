@@ -8,121 +8,114 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body {
-    margin: 0;
-    background: #eaf4ff;
-    font-family: Arial, sans-serif;
-    font-size: 13px;
-    color: #333;
+body{
+    margin:0;
+    background:#eaf4ff;
+    font-family:Arial,sans-serif;
+    font-size:13px;
+    color:#333;
 }
 
-.header {
-    background: #1769aa;
-    color: white;
-    padding: 10px;
-    font-size: 21px;
-    font-weight: bold;
+.header{
+    background:#1769aa;
+    color:white;
+    padding:10px;
+    font-size:21px;
+    font-weight:bold;
 }
 
-.nav {
-    background: white;
-    border-bottom: 1px solid #b7cde2;
-    padding: 7px;
+.nav{
+    background:white;
+    border-bottom:1px solid #b7cde2;
+    padding:7px;
 }
 
-.nav a {
-    color: #075aaa;
-    text-decoration: none;
-    margin-right: 8px;
+.nav a{
+    color:#075aaa;
+    text-decoration:none;
+    margin-right:8px;
 }
 
-.box {
-    margin: 8px;
-    background: white;
-    border: 1px solid #b7cde2;
+.box{
+    margin:8px;
+    background:white;
+    border:1px solid #b7cde2;
 }
 
-.title {
-    background: #ffe45c;
-    padding: 7px;
-    font-weight: bold;
+.title{
+    background:#ffe45c;
+    padding:7px;
+    font-weight:bold;
 }
 
-.content {
-    padding: 8px;
+.content{
+    padding:8px;
 }
 
-textarea {
-    width: 100%;
-    height: 65px;
-    box-sizing: border-box;
-    padding: 7px;
-    border: 1px solid #aaa;
-    resize: vertical;
-    font-family: Arial, sans-serif;
-    font-size: 13px;
+textarea{
+    width:100%;
+    height:65px;
+    box-sizing:border-box;
+    padding:7px;
+    border:1px solid #aaa;
+    resize:vertical;
+    font-family:Arial,sans-serif;
+    font-size:13px;
 }
 
-button {
-    margin-top: 6px;
-    background: #1769aa;
-    color: white;
-    border: 0;
-    padding: 7px 12px;
-    font-weight: bold;
-    cursor: pointer;
+button{
+    margin-top:6px;
+    background:#1769aa;
+    color:white;
+    border:0;
+    padding:7px 12px;
+    font-weight:bold;
 }
 
-button:disabled {
-    background: #888;
+button:disabled{
+    background:#888;
 }
 
-#postMessage {
-    margin-top: 7px;
+.shout{
+    border-bottom:1px solid #eee;
+    padding:8px 0;
 }
 
-.success {
-    color: #087a18;
+.shout:last-child{
+    border-bottom:0;
 }
 
-.error {
-    color: #b00000;
+.username{
+    color:#075aaa;
+    font-weight:bold;
 }
 
-.shout {
-    border-bottom: 1px solid #eee;
-    padding: 8px 0;
+.role{
+    color:#555;
+    font-size:11px;
 }
 
-.shout:last-child {
-    border-bottom: 0;
+.date{
+    color:#888;
+    font-size:11px;
+    margin-top:3px;
 }
 
-.username {
-    color: #075aaa;
-    font-weight: bold;
+.like{
+    color:#075aaa;
+    margin-top:4px;
 }
 
-.role {
-    color: #555;
-    font-size: 11px;
-    font-weight: normal;
+.error{
+    color:#b00000;
 }
 
-.date {
-    color: #888;
-    font-size: 11px;
-    margin-top: 3px;
+.success{
+    color:#087a18;
 }
 
-.like {
-    color: #075aaa;
-    margin-top: 4px;
-}
-
-.empty,
-.loading {
-    color: #777;
+.empty{
+    color:#777;
 }
 </style>
 </head>
@@ -143,7 +136,6 @@ button:disabled {
 </div>
 
 <div class="box">
-
     <div class="title">
         Create Shout
     </div>
@@ -156,7 +148,7 @@ button:disabled {
             placeholder="What's on your mind?"
         ></textarea>
 
-        <button id="postShout">
+        <button id="postButton">
             Post Shout
         </button>
 
@@ -165,6 +157,7 @@ button:disabled {
     </div>
 </div>
 
+
 <div class="box">
 
     <div class="title">
@@ -172,495 +165,488 @@ button:disabled {
     </div>
 
     <div class="content" id="shouts">
-        <div class="loading">
-            Loading shouts...
-        </div>
+        Loading shouts...
     </div>
 
 </div>
 
+
 <script>
 
-/* ===============================
-   SUPABASE
-================================ */
-
 const SUPABASE_URL =
-    "https://sqikfejouaxizvidivcg.supabase.co";
+"https://sqikfejouaxizvidivcg.supabase.co";
 
 const SUPABASE_KEY =
-    "sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
+"sb_publishable_FKnNj1zvRFkgUY8i2nHZCg_AjIT1hlQ";
 
 const supabaseClient =
-    window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_KEY
-    );
+window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
 
 let currentUser = null;
 
 
-/* ===============================
-   ESCAPE HTML
-================================ */
+/* ESCAPE HTML */
 
-function escapeHTML(value) {
+function escapeHTML(text){
 
     const div =
-        document.createElement("div");
+    document.createElement("div");
 
     div.textContent =
-        value == null ? "" : String(value);
+    text || "";
 
     return div.innerHTML;
 }
 
 
-/* ===============================
-   MESSAGE
-================================ */
+/* DATE */
 
-function showMessage(message, type) {
+function formatDate(date){
 
-    const box =
-        document.getElementById("postMessage");
+    if(!date) return "";
 
-    box.className =
-        type || "";
+    const d =
+    new Date(date);
 
-    box.textContent =
-        message;
+    if(isNaN(d.getTime()))
+        return "";
+
+    return d.toLocaleString();
 }
 
 
-/* ===============================
-   LOGIN CHECK
-================================ */
+/* LOGIN */
 
-async function checkLogin() {
+async function checkLogin(){
 
-    const result =
-        await supabaseClient.auth.getSession();
+    const {
+        data,
+        error
+    } =
+    await supabaseClient.auth.getSession();
 
-    if (result.error) {
+    if(error){
 
-        console.error(
-            "Session error:",
-            result.error
-        );
-
-        showMessage(
-            "Unable to check your login.",
-            "error"
-        );
+        console.error(error);
 
         return false;
     }
 
-    const session =
-        result.data.session;
-
-    if (!session || !session.user) {
+    if(!data.session){
 
         window.location.href =
-            "login.html";
+        "login.html";
 
         return false;
     }
 
     currentUser =
-        session.user;
+    data.session.user;
 
     return true;
 }
 
 
-/* ===============================
-   LOAD SHOUTS
-================================ */
+/* LOAD SHOUTS */
 
-async function loadShouts() {
+async function loadShouts(){
 
     const container =
-        document.getElementById("shouts");
+    document.getElementById("shouts");
 
     container.innerHTML =
-        '<div class="loading">Loading shouts...</div>';
+    "Loading shouts...";
 
 
-    const result =
-        await supabaseClient
-            .from("shouts")
-            .select(`
-                id,
-                body,
-                likes_count,
-                created_at,
-                user_id,
-                profiles (
-                    username,
-                    display_name,
-                    site_role,
-                    is_verified
-                )
-            `)
-            .order(
-                "created_at",
-                {
-                    ascending: false
-                }
-            )
-            .limit(50);
+    /*
+       IMPORTANT:
+       We DO NOT request profiles(...)
+       because there is no Supabase
+       relationship between shouts and profiles.
+    */
+
+    const {
+        data: shouts,
+        error
+    } =
+    await supabaseClient
+    .from("shouts")
+    .select(
+        "id, body, likes_count, created_at, user_id"
+    )
+    .order(
+        "created_at",
+        {
+            ascending:false
+        }
+    )
+    .limit(50);
 
 
-    if (result.error) {
+    if(error){
 
         console.error(
-            "Load shouts error:",
-            result.error
+            "SHOUT LOAD ERROR:",
+            error
         );
 
         container.innerHTML =
-            '<div class="error">' +
-            'Unable to load shouts.<br><br>' +
-            escapeHTML(
-                result.error.message
-            ) +
-            '</div>';
+        '<div class="error">' +
+        'Unable to load shouts.<br><br>' +
+        escapeHTML(error.message) +
+        '</div>';
 
         return;
     }
 
 
-    const shouts =
-        result.data || [];
-
-
-    if (shouts.length === 0) {
+    if(!shouts || shouts.length === 0){
 
         container.innerHTML =
-            '<div class="empty">' +
-            'No shouts yet. Be the first to post!' +
-            '</div>';
+        '<div class="empty">' +
+        'No shouts yet. Be the first to post!' +
+        '</div>';
 
         return;
     }
+
+
+    /* GET USER IDS */
+
+    const userIds =
+    [
+        ...new Set(
+            shouts.map(
+                shout => shout.user_id
+            )
+        )
+    ];
+
+
+    /* LOAD PROFILES SEPARATELY */
+
+    let profiles = [];
+
+
+    if(userIds.length > 0){
+
+        const profileResult =
+        await supabaseClient
+        .from("profiles")
+        .select(
+            "id, username, display_name, site_role, is_verified"
+        )
+        .in(
+            "id",
+            userIds
+        );
+
+
+        if(profileResult.error){
+
+            console.error(
+                "PROFILE LOAD ERROR:",
+                profileResult.error
+            );
+
+        }else{
+
+            profiles =
+            profileResult.data || [];
+        }
+    }
+
+
+    /* CREATE PROFILE LOOKUP */
+
+    const profileMap = {};
+
+    profiles.forEach(
+        profile => {
+
+            profileMap[
+                profile.id
+            ] = profile;
+
+        }
+    );
 
 
     container.innerHTML = "";
 
 
-    shouts.forEach(function(shout) {
+    /* DISPLAY SHOUTS */
 
-        const profile =
-            shout.profiles || {};
+    shouts.forEach(
+        shout => {
 
-
-        let roleText = "";
-
-
-        if (profile.site_role === "owner") {
-
-            roleText = "👑 OWNER";
-
-        } else if (
-            profile.site_role &&
-            profile.site_role !== "member" &&
-            profile.site_role !== "new_member"
-        ) {
-
-            roleText =
-                profile.site_role
-                    .replace(/_/g, " ")
-                    .toUpperCase();
-        }
+            const profile =
+            profileMap[
+                shout.user_id
+            ] || {};
 
 
-        const name =
+            const name =
             profile.display_name ||
             profile.username ||
             "Member";
 
 
-        const shoutDiv =
+            let role = "";
+
+
+            if(profile.site_role === "owner"){
+
+                role = "👑 OWNER";
+
+            }else if(
+                profile.site_role &&
+                profile.site_role !== "member" &&
+                profile.site_role !== "new_member"
+            ){
+
+                role =
+                profile.site_role
+                .replace(/_/g," ")
+                .toUpperCase();
+            }
+
+
+            const shoutDiv =
             document.createElement("div");
 
-        shoutDiv.className =
+            shoutDiv.className =
             "shout";
 
 
-        shoutDiv.innerHTML = `
+            shoutDiv.innerHTML = `
 
-            <div class="username">
-                ${escapeHTML(name)}
+                <div class="username">
 
-                ${
-                    profile.is_verified
-                    ? " ✅"
-                    : ""
-                }
+                    ${escapeHTML(name)}
 
-                ${
-                    roleText
-                    ? `
+                    ${
+                        profile.is_verified
+                        ? " ✅"
+                        : ""
+                    }
+
+                    ${
+                        role
+                        ? `
                         <span class="role">
-                            [${escapeHTML(roleText)}]
+                            [${escapeHTML(role)}]
                         </span>
-                      `
-                    : ""
-                }
-            </div>
+                        `
+                        : ""
+                    }
 
-            <div>
-                ${escapeHTML(shout.body)}
-            </div>
+                </div>
 
-            <div class="date">
-                ${formatDate(shout.created_at)}
-            </div>
+                <div>
+                    ${escapeHTML(shout.body)}
+                </div>
 
-            <div class="like">
-                ❤️ ${Number(shout.likes_count) || 0} likes
-            </div>
+                <div class="date">
+                    ${formatDate(shout.created_at)}
+                </div>
 
-        `;
+                <div class="like">
+                    ❤️ ${Number(shout.likes_count) || 0} likes
+                </div>
 
-        container.appendChild(shoutDiv);
+            `;
 
-    });
+
+            container.appendChild(
+                shoutDiv
+            );
+
+        }
+    );
 }
 
 
-/* ===============================
-   DATE
-================================ */
+/* POST SHOUT */
 
-function formatDate(value) {
-
-    if (!value) return "";
-
-    const date =
-        new Date(value);
-
-    if (isNaN(date.getTime())) {
-        return "";
-    }
-
-    return date.toLocaleString();
-}
-
-
-/* ===============================
-   POST SHOUT
-================================ */
-
-async function postShout() {
-
-    const button =
-        document.getElementById(
-            "postShout"
-        );
+async function postShout(){
 
     const textarea =
-        document.getElementById(
-            "shoutText"
-        );
+    document.getElementById(
+        "shoutText"
+    );
+
+    const button =
+    document.getElementById(
+        "postButton"
+    );
+
+    const message =
+    document.getElementById(
+        "postMessage"
+    );
+
 
     const body =
-        textarea.value.trim();
+    textarea.value.trim();
 
 
-    if (!body) {
+    if(!body){
 
-        showMessage(
-            "Write something first.",
-            "error"
-        );
+        message.className =
+        "error";
 
-        textarea.focus();
-
-        return;
-    }
-
-
-    if (body.length > 500) {
-
-        showMessage(
-            "Maximum 500 characters.",
-            "error"
-        );
+        message.textContent =
+        "Write something first.";
 
         return;
     }
 
 
-    /* Refresh session */
+    /* CHECK SESSION AGAIN */
 
-    const sessionResult =
-        await supabaseClient.auth.getSession();
+    const {
+        data,
+        error
+    } =
+    await supabaseClient.auth.getSession();
 
 
-    if (
-        sessionResult.error ||
-        !sessionResult.data.session
-    ) {
+    if(error || !data.session){
 
         window.location.href =
-            "login.html";
+        "login.html";
 
         return;
     }
 
 
     currentUser =
-        sessionResult.data.session.user;
+    data.session.user;
 
 
     button.disabled = true;
 
     button.textContent =
-        "Posting...";
+    "Posting...";
 
-    showMessage("", "");
+    message.textContent = "";
 
 
-    try {
+    try{
 
         const result =
-            await supabaseClient
-                .from("shouts")
-                .insert({
-                    user_id: currentUser.id,
-                    body: body
-                })
-                .select()
-                .single();
+        await supabaseClient
+        .from("shouts")
+        .insert({
+
+            user_id:
+            currentUser.id,
+
+            body:
+            body
+
+        })
+        .select()
+        .single();
 
 
-        if (result.error) {
+        if(result.error){
 
             console.error(
                 "POST SHOUT ERROR:",
                 result.error
             );
 
-            showMessage(
-                "Could not post shout: " +
-                result.error.message,
-                "error"
-            );
+            message.className =
+            "error";
+
+            message.textContent =
+            "Could not post shout: " +
+            result.error.message;
 
             return;
         }
 
 
-        console.log(
-            "SHOUT CREATED:",
-            result.data
-        );
-
-
         textarea.value = "";
 
 
-        showMessage(
-            "Shout posted successfully! ✅",
-            "success"
-        );
+        message.className =
+        "success";
+
+        message.textContent =
+        "Shout posted successfully! ✅";
 
 
         await loadShouts();
 
-    } catch (error) {
 
-        console.error(
-            "Unexpected error:",
-            error
-        );
+    }catch(error){
 
-        showMessage(
-            "Something went wrong: " +
-            error.message,
-            "error"
-        );
+        console.error(error);
 
-    } finally {
+        message.className =
+        "error";
+
+        message.textContent =
+        "Something went wrong: " +
+        error.message;
+
+    }finally{
 
         button.disabled = false;
 
         button.textContent =
-            "Post Shout";
+        "Post Shout";
     }
 }
 
 
-/* ===============================
-   POST BUTTON
-================================ */
+/* BUTTON */
 
 document
-    .getElementById("postShout")
-    .addEventListener(
-        "click",
-        postShout
-    );
+.getElementById("postButton")
+.addEventListener(
+    "click",
+    postShout
+);
 
 
-/* ===============================
-   CTRL + ENTER
-================================ */
+/* CTRL + ENTER */
 
 document
-    .getElementById("shoutText")
-    .addEventListener(
-        "keydown",
-        function(event) {
+.getElementById("shoutText")
+.addEventListener(
+    "keydown",
+    function(event){
 
-            if (
-                event.key === "Enter" &&
-                event.ctrlKey
-            ) {
+        if(
+            event.key === "Enter" &&
+            event.ctrlKey
+        ){
 
-                event.preventDefault();
+            event.preventDefault();
 
-                postShout();
-            }
+            postShout();
         }
-    );
 
-
-/* ===============================
-   AUTH LISTENER
-================================ */
-
-supabaseClient.auth.onAuthStateChange(
-    function(event, session) {
-
-        if (session && session.user) {
-
-            currentUser =
-                session.user;
-
-        } else {
-
-            currentUser = null;
-        }
     }
 );
 
 
-/* ===============================
-   START
-================================ */
+/* START */
 
-(async function() {
+(async function(){
 
     const loggedIn =
-        await checkLogin();
+    await checkLogin();
 
-    if (!loggedIn) {
+    if(!loggedIn)
         return;
-    }
 
     await loadShouts();
 
